@@ -1,0 +1,36 @@
+site_name: Plataforma de Projetos (MP) — Docs
+theme:
+  name: material
+nav:
+- Início: index.md
+- Arquitetura:
+  - Visão geral: arquitetura/visao-geral.md
+  - Microsserviços: arquitetura/microsservicos.md
+- Instalação:
+  - Guia rápido: instalacao/rapida.md
+- Configuração:
+  - Variáveis: configuracao/variaveis.md
+- Segurança:
+  - Padrões: seguranca/padroes.md
+- Observabilidade:
+  - Stack: observabilidade/stack.md
+- RAG:
+  - Visão geral: rag/visao-geral.md
+- APIs:
+  - Persistência: apis/persistence.md
+  - Ingestão: apis/ingestion.md
+  - Chat: apis/chat.md
+- Frontend:
+  - Guia: frontend/guia.md
+- Operação:
+  - Deploy: operacao/deploy.md
+- Troubleshooting:
+  - FAQ: troubleshooting/faq.md
+markdown_extensions:
+- tables
+- fenced_code
+- codehilite
+- admonition
+- toc
+plugins:
+- search

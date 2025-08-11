@@ -1,0 +1,118 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: projects_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d projects_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mcp-persistence:
+    build:
+      context: ./services/mcp-persistence
+    env_file:
+      - ./.env.shared
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  mcp-ingestion:
+    build:
+      context: ./services/mcp-ingestion
+    env_file:
+      - ./.env.shared
+    ports:
+      - "8001:8001"
+    depends_on:
+      - mcp-persistence
+
+volumes:
+  pgdata:
+
+  web-portal:
+    build:
+      context: ./apps/web-portal
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_TEST_MODE=true
+      - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_INGESTION_BASE_URL=http://localhost:8001
+    depends_on:
+      - mcp-persistence
+      - mcp-ingestion
+
+  # bind mounts for ingestion data
+  mcp-ingestion:
+    volumes:
+      - ./services/mcp-ingestion/data/resources:/data/resources
+      - ./services/mcp-ingestion/data/uploads:/data/uploads
+
+  mcp-chat:
+    env_file:
+      - ./.env.shared
+    build:
+      context: ./services/mcp-chat
+    ports:
+      - "8002:8002"
+    depends_on:
+      - mcp-persistence
+      - mcp-ingestion
+
+  mcp-chat:
+    env_file:
+      - ./.env.shared
+    volumes:
+      - ./services/mcp-ingestion/data/resources:/data/resources
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  mcp-tasks:
+    env_file:
+      - ./.env.shared
+    build:
+      context: ./services/mcp-tasks
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CHAT_REINDEX_URL=http://mcp-chat:8002/health
+    depends_on:
+      - redis
+      - mcp-chat
+
+  flower:
+    image: mher/flower:2.0
+    environment:
+      - FLOWER_BROKER_URL=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - mcp-tasks
+
+  mcp-ingestion:
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - mcp-tasks
+
+  mcp-tasks:
+    env_file:
+      - ./.env.shared
+    environment:
+      - PERSISTENCE_BASE_URL=http://mcp-persistence:8000
+      - CNMP_CSV_SCHEMA=/app/mcp_ingestion/prompts/Formulario_CNMP_2025.csv

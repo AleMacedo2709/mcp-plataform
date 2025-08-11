@@ -1,0 +1,18 @@
+services:
+  mcp-persistence:
+    env_file:
+      - ./.env.shared
+    environment:
+      - ENVIRONMENT=dev
+      - ENV_FILE=.env.dev
+  mcp-ingestion:
+    env_file:
+      - ./.env.shared
+    environment:
+      - ENVIRONMENT=dev
+      - ENV_FILE=.env.dev
+  web-portal:
+    environment:
+      - VITE_TEST_MODE=true
+      - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_INGESTION_BASE_URL=http://localhost:8001

@@ -1,0 +1,30 @@
+Nome do Campo,Descrição,Tipo,maxLength
+Nome da iniciativa,Título da iniciativa inscrita no Prêmio,Texto,300.0
+Tipo de iniciativa,"Tipo de atuação: Ação, Campanha, Ferramenta",Escolha única,
+Classificação,Origem ou vínculo institucional da iniciativa,Escolha única,
+Natureza da iniciativa,Resumo da natureza da iniciativa,Texto,100.0
+Iniciativa vinculada,Nome da iniciativa e instituição vinculada,Texto,300.0
+Objetivo Estratégico PEN-MP,Objetivo do PEN-MP ao qual a iniciativa está vinculada,Escolha única,
+Programa PEN-MP,Programas relacionados ao objetivo estratégico,Múltipla escolha,
+Promoção do Objetivo Estratégico,Como a iniciativa contribui para o objetivo estratégico,Texto,100.0
+Data inicial de operação,Data em que a iniciativa começou a operar,Texto,300.0
+Fase de implementação,Fase atual da iniciativa,Escolha única,
+Descrição,Descrição detalhada da iniciativa,Texto,1000.0
+Estimativa de recursos,Recursos materiais e humanos necessários,Texto,200.0
+Público impactado,Público interno/externo impactado,Texto,100.0
+Órgãos envolvidos,Órgãos parceiros ou colaboradores,Texto,300.0
+Contatos,Nome e e-mail dos responsáveis,Texto,300.0
+Desafio 1,Primeiro desafio enfrentado pela iniciativa,Texto,100.0
+Desafio 2,Segundo desafio enfrentado,Texto,100.0
+Desafio 3,Terceiro desafio enfrentado,Texto,100.0
+Resolutividade,Justificativa quanto à resolutividade,Texto,500.0
+Inovação,Justificativa quanto à inovação,Texto,500.0
+Transparência,Justificativa quanto à transparência,Texto,500.0
+Proatividade,Justificativa quanto à proatividade,Texto,500.0
+Cooperação,Justificativa quanto à cooperação,Texto,500.0
+Resultado 1,Resultado alcançado 1,Texto,100.0
+Resultado 2,Resultado alcançado 2,Texto,100.0
+Resultado 3,Resultado alcançado 3,Texto,100.0
+Comprovação dos resultados,Upload de arquivos que comprovam os resultados,Upload de arquivos,
+Capa da Iniciativa,Imagem da iniciativa (JPG/PNG),Upload de imagem,
+Categoria,Categoria de premiação,Escolha única,

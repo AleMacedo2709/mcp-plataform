@@ -1,0 +1,6 @@
+[tool.uv.workspace]
+members = [
+  "services/mcp-chat",
+  "services/mcp-ingestion",
+  "services/mcp-persistence"
+]

@@ -1,0 +1,18 @@
+services:
+  mcp-persistence:
+    env_file:
+      - ./.env.shared
+    environment:
+      - ENVIRONMENT=prod
+      - ENV_FILE=.env.prod
+  mcp-ingestion:
+    env_file:
+      - ./.env.shared
+    environment:
+      - ENVIRONMENT=prod
+      - ENV_FILE=.env.prod
+  web-portal:
+    environment:
+      - VITE_TEST_MODE=false
+      - VITE_API_BASE_URL=https://api.portal.mp.gov.br
+      - VITE_INGESTION_BASE_URL=https://ingestion.portal.mp.gov.br

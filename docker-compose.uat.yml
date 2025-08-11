@@ -1,0 +1,18 @@
+services:
+  mcp-persistence:
+    env_file:
+      - ./.env.shared
+    environment:
+      - ENVIRONMENT=uat
+      - ENV_FILE=.env.uat
+  mcp-ingestion:
+    env_file:
+      - ./.env.shared
+    environment:
+      - ENVIRONMENT=uat
+      - ENV_FILE=.env.uat
+  web-portal:
+    environment:
+      - VITE_TEST_MODE=false
+      - VITE_API_BASE_URL=https://api-uat.portal.mp.gov.br
+      - VITE_INGESTION_BASE_URL=https://ingestion-uat.portal.mp.gov.br

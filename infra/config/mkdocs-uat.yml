@@ -1,0 +1,2 @@
+INHERIT: ./mkdocs-dev.yml
+site_url: https://tileneuat.mpsp.mp.br/docs/

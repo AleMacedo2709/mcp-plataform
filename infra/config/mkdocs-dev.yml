@@ -1,0 +1,42 @@
+INHERIT: ./mkdocs-base.yml
+site_url: https://tilenedev.mpsp.mp.br/docs/
+
+# NavBar
+# Opcional
+nav:
+  - Home: index.md
+  - Como Funciona:
+      - Aspectos Gerais: pages/aspectos-gerais.md
+      - <i>Upload</i> de Documentos: pages/upload.md
+      - <i>Prompts</i>: pages/prompts.md
+      - Configurações: pages/configurações.md
+
+  - Outros:
+      - Inteligência Artificial: pages/inteligência-artificial.md
+      - Informações: pages/informações.md
+
+  - Documentação Técnica:
+      - Estrutura do Projeto: pages/estrutura-do-projeto.md
+      - Código Fonte: pages/código.md
+
+      - Requisitos:
+          - Sistema Operacional: pages/sistema-operacional.md
+          - <i>Python</i>: pages/python.md
+          - <i>Database</i>: pages/database.md
+          - <i>Redis</i> e <i>Celery</i>: pages/redis-e-celery.md
+
+      - Configurações:
+          - Estrutura dos Dados: pages/dados.md
+          - <i>Environments</i>: pages/environments.md
+          - Autenticação: pages/autenticação.md
+
+      - Como Rodar?: pages/como-rodar.md
+      - Como Instanciar?: pages/como-instanciar.md
+      - Ambientes: pages/ambientes.md
+
+      - Ajustes:
+          - Identidade Visual: pages/identidade-visual.md
+          - Modificações: pages/modificações.md
+          - <i>Logs</i>: pages/logs.md
+          - TCE: pages/tce.md
+          - Erros: pages/erros.md

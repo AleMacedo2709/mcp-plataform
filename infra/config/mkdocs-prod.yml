@@ -1,0 +1,15 @@
+INHERIT: ./mkdocs-base.yml
+site_url: https://tilene.mpsp.mp.br/docs/
+
+# NavBar
+# Opcional
+nav:
+  - Home: index.md
+  - Como Funciona:
+      - Aspectos Gerais: pages/aspectos-gerais.md
+      - <i>Upload</i> de Documentos: pages/upload.md
+      - <i>Prompts</i>: pages/prompts.md
+      - Configurações: pages/configurações.md
+
+  - Outros:
+      - Informações: pages/informações.md

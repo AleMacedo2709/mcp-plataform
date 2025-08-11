@@ -1,0 +1,21 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+
+exporters:
+  debug:
+    verbosity: detailed
+  otlphttp:
+    endpoint: http://tempo:4318
+    compression: none
+
+processors:
+  batch: {}
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp, debug]

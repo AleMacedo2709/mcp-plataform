@@ -1,0 +1,219 @@
+{
+  "name": "analyze_project_document_cnmp_2025",
+  "description": "Analisa um documento de projeto/iniciativa e extrai os dados estruturados conforme o schema COMPLETO do Prêmio CNMP 2025 (29 campos).",
+  "system_prompt": "Você é um especialista em análise de documentos para o Prêmio CNMP 2025 do Conselho Nacional do Ministério Público. Sua função é extrair informações estruturadas de documentos e formatá-las conforme o schema completo de 29 campos do CNMP.\n\nIMPORTANTE: \n- Respeite SEMPRE os limites de caracteres (maxLength) de cada campo\n- Se o texto original exceder o limite, faça um resumo INTELIGENTE preservando as informações mais importantes\n- Mantenha a essência e principais informações mesmo ao resumir\n- Use linguagem clara e profissional adequada ao contexto do Ministério Público\n- Se alguma informação não estiver presente no documento, deixe o campo vazio\n- Para campos de seleção, use exatamente as opções válidas fornecidas\n- Identifique automaticamente o tipo de iniciativa (Ação, Campanha, Ferramenta)\n- Extraia resultados e desafios mesmo se não explicitamente listados\n- Adapte textos longos preservando terminologia jurídica e institucional",
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "nome_iniciativa": {
+        "type": "string",
+        "description": "Nome/título completo da iniciativa.",
+        "maxLength": 300
+      },
+      "tipo_iniciativa": {
+        "type": "string",
+        "description": "Tipo da iniciativa. Deve ser um dos seguintes: 'Ação', 'Campanha', 'Ferramenta'.",
+        "enum": ["Ação", "Campanha", "Ferramenta"]
+      },
+      "classificacao": {
+        "type": "string",
+        "description": "Classificação da iniciativa quanto à origem.",
+        "enum": [
+          "Iniciativa do Ministério Público",
+          "Iniciativa em parceria com outros órgãos",
+          "Iniciativa de rede ou coletiva"
+        ]
+      },
+      "natureza_iniciativa": {
+        "type": "string",
+        "description": "Natureza específica da iniciativa (ex: 'Original desenvolvida internamente').",
+        "maxLength": 100
+      },
+      "iniciativa_vinculada": {
+        "type": "string",
+        "description": "Iniciativa ou programa ao qual está vinculada, se aplicável.",
+        "maxLength": 300
+      },
+      "objetivo_estrategico_pen_mp": {
+        "type": "string",
+        "description": "Objetivo Estratégico do PEN-MP relacionado à iniciativa.",
+        "enum": [
+          "Objetivo 1 - Assegurar a tutela adequada e tempestiva dos direitos fundamentais",
+          "Objetivo 2 - Promover a efetividade da persecução penal",
+          "Objetivo 3 - Fortalecer a governança institucional",
+          "Objetivo 4 - Promover a cultura de inovação e transformação digital",
+          "Objetivo 5 - Fortalecer as relações institucionais"
+        ]
+      },
+      "programa_pen_mp": {
+        "type": "array",
+        "description": "Programas do PEN-MP relacionados (pode ser múltiplos).",
+        "items": {
+          "type": "string",
+          "enum": [
+            "Combate à corrupção",
+            "Proteção do patrimônio público",
+            "Direitos fundamentais",
+            "Meio ambiente",
+            "Inclusão social",
+            "Inovação e tecnologia",
+            "Gestão estratégica"
+          ]
+        }
+      },
+      "promocao_objetivo_estrategico": {
+        "type": "string",
+        "description": "Como a iniciativa promove o objetivo estratégico selecionado.",
+        "maxLength": 100
+      },
+      "data_inicial_operacao": {
+        "type": "string",
+        "description": "Data de início da iniciativa no formato DD/MM/AAAA.",
+        "format": "date"
+      },
+      "fase_implementacao": {
+        "type": "string",
+        "description": "Fase atual de implementação da iniciativa.",
+        "enum": [
+          "Planejamento",
+          "Desenvolvimento",
+          "Implementação",
+          "Operação",
+          "Avaliação",
+          "Encerramento"
+        ]
+      },
+      "descricao": {
+        "type": "string",
+        "description": "Descrição detalhada e completa da iniciativa.",
+        "maxLength": 1000
+      },
+      "estimativa_recursos": {
+        "type": "string",
+        "description": "Estimativa de recursos materiais, humanos e financeiros envolvidos.",
+        "maxLength": 200
+      },
+      "publico_impactado": {
+        "type": "string",
+        "description": "Público beneficiado direta ou indiretamente pela iniciativa.",
+        "maxLength": 100
+      },
+      "orgaos_envolvidos": {
+        "type": "string",
+        "description": "Órgãos parceiros, coexecutores ou colaboradores da iniciativa.",
+        "maxLength": 300
+      },
+      "contatos": {
+        "type": "string",
+        "description": "Nome, cargo e e-mail dos responsáveis pela iniciativa.",
+        "maxLength": 300
+      },
+      "desafio_1": {
+        "type": "string",
+        "description": "Descrição do primeiro principal desafio enfrentado na implementação.",
+        "maxLength": 100
+      },
+      "desafio_2": {
+        "type": "string",
+        "description": "Descrição do segundo principal desafio enfrentado na implementação.",
+        "maxLength": 100
+      },
+      "desafio_3": {
+        "type": "string",
+        "description": "Descrição do terceiro principal desafio enfrentado na implementação.",
+        "maxLength": 100
+      },
+      "resolutividade": {
+        "type": "string",
+        "description": "Como a iniciativa contribui para a resolutividade das ações do MP.",
+        "maxLength": 500
+      },
+      "inovacao": {
+        "type": "string",
+        "description": "Aspectos inovadores e diferenciais da iniciativa.",
+        "maxLength": 500
+      },
+      "transparencia": {
+        "type": "string",
+        "description": "Como a iniciativa promove transparência e accountability.",
+        "maxLength": 500
+      },
+      "proatividade": {
+        "type": "string",
+        "description": "Aspectos proativos e preventivos da iniciativa.",
+        "maxLength": 500
+      },
+      "cooperacao": {
+        "type": "string",
+        "description": "Como a iniciativa promove cooperação institucional e interação.",
+        "maxLength": 500
+      },
+      "resultado_1": {
+        "type": "string",
+        "description": "Descrição do primeiro principal resultado alcançado.",
+        "maxLength": 100
+      },
+      "resultado_2": {
+        "type": "string",
+        "description": "Descrição do segundo principal resultado alcançado.",
+        "maxLength": 100
+      },
+      "resultado_3": {
+        "type": "string",
+        "description": "Descrição do terceiro principal resultado alcançado.",
+        "maxLength": 100
+      },
+      "comprovacao_resultados": {
+        "type": "string",
+        "description": "Informações sobre documentos que comprovam os resultados (será arquivo separado).",
+        "maxLength": 200
+      },
+      "capa_iniciativa": {
+        "type": "string",
+        "description": "Informações sobre imagem/capa representativa da iniciativa (será arquivo separado).",
+        "maxLength": 200
+      },
+      "categoria": {
+        "type": "string",
+        "description": "Categoria do Ministério Público participante do Prêmio CNMP 2025.",
+        "enum": [
+          "Categoria A - Ministérios Públicos Estaduais",
+          "Categoria B - Ministério Público da União",
+          "Categoria C - Ministérios Públicos do Trabalho",
+          "Categoria D - Ministério Público Militar",
+          "Categoria E - Ministérios Públicos do Distrito Federal e Territórios"
+        ]
+      }
+    },
+    "required": [
+      "nome_iniciativa",
+      "tipo_iniciativa",
+      "classificacao",
+      "descricao",
+      "categoria"
+    ]
+  },
+  "extraction_guidelines": {
+    "text_processing": {
+      "preserve_legal_terminology": true,
+      "maintain_institutional_language": true,
+      "smart_summarization_when_exceeding_limits": true,
+      "extract_implicit_information": true
+    },
+    "field_mapping_hints": {
+      "nome_iniciativa": ["título", "nome", "denominação", "projeto", "programa"],
+      "descricao": ["descrição", "resumo", "objetivo", "finalidade", "propósito"],
+      "resultados": ["resultados", "produtos", "entregas", "conquistas", "alcance"],
+      "desafios": ["desafios", "dificuldades", "obstáculos", "problemas", "limitações"],
+      "recursos": ["recursos", "orçamento", "custo", "investimento", "equipe"],
+      "publico": ["público", "beneficiários", "destinatários", "alvo"],
+      "parceiros": ["parceiros", "colaboradores", "apoiadores", "coexecutores"]
+    },
+    "validation_rules": {
+      "dates_format": "DD/MM/AAAA",
+      "email_in_contacts": "Deve incluir pelo menos um e-mail",
+      "enum_exact_match": "Para campos enum, usar exatamente as opções fornecidas",
+      "preserve_essence_when_truncating": "Manter informações essenciais ao resumir"
+    }
+  }
+}
