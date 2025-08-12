@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Box, Paper, Typography, TextField, IconButton, Stack, Chip, Button } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
-import Layout from '../components/Layout'
-import { Card, CardContent, CardActions, Button } from '@mui/material'
+import { Card, CardContent, CardActions } from '@mui/material'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 
 function MessageView({ msg }) {
@@ -132,9 +131,9 @@ export default function Chat() {
   }
 
   return (
-    <Layout>
-      <Typography variant="h5" sx={{ mb: 2 }}>Chat (MCP)</Typography>
-      <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap:'wrap' }}>
+    <Box>
+      <Typography variant="h5" sx={{ mb: 2, fontWeight: 800 }}>Chat (MCP)</Typography>
+      <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap:'wrap', alignItems:'center' }}>
         {['projeto','resource','documento','buscar'].map((t)=>(
           <Chip key={t} label={t} onClick={()=>setInput((v)=> (v? (v+ ' ' + t) : t))} />
         ))}
@@ -146,7 +145,7 @@ export default function Chat() {
           const a = document.createElement('a'); a.href=url; a.download='chat-resposta.json'; a.click(); URL.revokeObjectURL(url);
         }}>Exportar resposta</Button>
       </Stack>
-      <Paper variant="outlined" sx={{ p: 2, height: 480, overflowY: 'auto', mb: 2, bgcolor: '#fff' }}>
+      <Paper variant="outlined" sx={{ p: { xs: 1.5, md: 2 }, height: { xs: 360, md: 480 }, overflowY: 'auto', mb: 2 }}>
         <Stack spacing={1}>
           {messages.map((m, i) => (
             <Box key={i}>
@@ -165,6 +164,6 @@ export default function Chat() {
         />
         <IconButton color="primary" onClick={send}><SendIcon /></IconButton>
       </Stack>
-    </Layout>
+    </Box>
   )
 }

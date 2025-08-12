@@ -1,6 +1,15 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from pathlib import Path
+import sys
+try:
+    _app_root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(_app_root))
+    sys.path.insert(0, str(_app_root / 'packages'))
+except Exception:
+    pass
+
 from packages.institutional.tools.jsonlog import configure_json_logging
 from packages.institutional.tools.tracing import setup_tracing
 from packages.institutional.tools.security_headers import SecurityHeadersMiddleware
@@ -29,14 +38,18 @@ def health():
     return {"status": "ok", "env": settings.ENVIRONMENT}
 
 
-from .institutional_routes import api as inst_api, root as inst_root, tasks as inst_tasks, upload as inst_upload
 import os
-INCLUDE_INST = os.getenv("INCLUDE_INSTITUTIONAL_ROUTES", "true").lower() == "true"
+INCLUDE_INST = os.getenv("INCLUDE_INSTITUTIONAL_ROUTES", "false").lower() == "true"
 if INCLUDE_INST:
-    app.include_router(inst_root.router, tags=["inst-root"])
-    app.include_router(inst_api.router, prefix="/inst/api", tags=["inst-api"])
-    app.include_router(inst_tasks.router, prefix="/inst/tasks", tags=["inst-tasks"])
-    app.include_router(inst_upload.router, prefix="/inst/upload", tags=["inst-upload"])
+    try:
+        from .institutional_routes import api as inst_api, root as inst_root, tasks as inst_tasks, upload as inst_upload
+        app.include_router(inst_root.router, tags=["inst-root"])
+        app.include_router(inst_api.router, prefix="/inst/api", tags=["inst-api"])
+        app.include_router(inst_tasks.router, prefix="/inst/tasks", tags=["inst-tasks"])
+        app.include_router(inst_upload.router, prefix="/inst/upload", tags=["inst-upload"])
+    except Exception:
+        # Rotas legadas removidas
+        pass
 
 
 from fastapi import Request
@@ -76,13 +89,16 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Load shared env
 try:
     _root_env = Path(__file__).resolve().parents[3] / '.env.shared'
-    , override=False)
+    load_dotenv(str(_root_env), override=True)
 except Exception:
     pass
 
-# Load shared env only
+# Static serving for uploaded files
 try:
-    _root_env = Path(__file__).resolve().parents[3] / '.env.shared'
-    load_dotenv(str(_root_env), override=True)
+    import os as _os
+    _upload_dir = _os.getenv("UPLOAD_DIR", "/data/uploads")
+    _os.makedirs(_upload_dir, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=_upload_dir), name="uploads")
 except Exception:
+    # In dev, failing to mount static shouldn't crash the app
     pass

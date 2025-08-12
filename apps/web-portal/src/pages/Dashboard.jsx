@@ -6,20 +6,17 @@ import {
   CardContent,
   Typography,
   Avatar,
-  LinearProgress,
   List,
   ListItem,
   ListItemText,
   ListItemAvatar,
   Chip,
-  IconButton,
   Button
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
   Folder as FolderIcon,
   Upload as UploadIcon,
-  People as PeopleIcon,
   Analytics as AnalyticsIcon,
   Add as AddIcon,
   Refresh as RefreshIcon
@@ -47,11 +44,11 @@ const Dashboard = () => {
       setLoading(true);
       
       // Carregar estatísticas
-      const statsResponse = await reportService.getDashboardMetrics();
+      const statsResponse = await reportService.dashboard();
       setStats(statsResponse);
 
       // Carregar projetos recentes
-      const projectsResponse = await projectService.getAll({ 
+      const projectsResponse = await projectService.list({ 
         limit: 5, 
         orderBy: 'created_at',
         order: 'desc' 
@@ -86,29 +83,21 @@ const Dashboard = () => {
       {/* Header */}
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
+          <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 800 }}>
             Dashboard
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body2" color="text.secondary">
             Bem-vindo de volta, {user?.name?.split(' ')[0]}! 
           </Typography>
         </Box>
         
         <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={loadDashboardData}
-          >
+          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadDashboardData}>
             Atualizar
           </Button>
           
           {hasPermission('user') && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/projects/new')}
-            >
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/projects/new')}>
               Novo Projeto
             </Button>
           )}
@@ -197,39 +186,8 @@ const Dashboard = () => {
           </Card>
         </Grid>
 
-        {/* Gráfico de Progresso por Tipo */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Projetos por Tipo
-              </Typography>
-              
-              {stats?.projectsByType?.map((item, index) => (
-                <Box key={index} sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2">{item.type}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {item.count} ({Math.round((item.count / stats.totalProjects) * 100)}%)
-                    </Typography>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={(item.count / stats.totalProjects) * 100}
-                    sx={{ height: 8, borderRadius: 1 }}
-                  />
-                </Box>
-              )) || (
-                <Typography variant="body2" color="text.secondary">
-                  Nenhum dado disponível
-                </Typography>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
         {/* Projetos Recentes */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={12}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -311,29 +269,12 @@ const Dashboard = () => {
                   Criar Projeto
                 </Button>
                 
-                <Button
-                  variant="outlined"
-                  startIcon={<UploadIcon />}
-                  onClick={() => navigate('/upload')}
-                >
+                <Button variant="outlined" startIcon={<UploadIcon />} onClick={() => navigate('/projects/smart-create')}>
                   Analisar Documento
                 </Button>
                 
-                <Button
-                  variant="outlined"
-                  startIcon={<FolderIcon />}
-                  onClick={() => navigate('/projects')}
-                >
+                <Button variant="outlined" startIcon={<FolderIcon />} onClick={() => navigate('/projects')}>
                   Ver Todos os Projetos
-                </Button>
-                
-                <Button
-                  variant="outlined"
-                  startIcon={<AnalyticsIcon />}
-                  onClick={() => navigate('/reports')}
-                  disabled={!hasPermission('admin')}
-                >
-                  Relatórios
                 </Button>
               </Box>
             </CardContent>

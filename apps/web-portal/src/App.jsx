@@ -10,13 +10,13 @@ import Dashboard from './pages/Dashboard';
 import ProjectList from './pages/ProjectList';
 import ProjectForm from './pages/ProjectForm';
 import ProjectView from './pages/ProjectView';
-import UploadDocument from './pages/UploadDocument';
+// import UploadDocument from './pages/UploadDocument';
 import SmartProjectCreator from './pages/SmartProjectCreator'
 import Chat from './pages/Chat'
-import Tasks from './pages/Tasks'
-import TaskDetail from './pages/TaskDetail';
-import Profile from './pages/Profile';
+// Removed Processamentos pages
+// import Profile from './pages/Profile';
 import LoadingSpinner from './components/LoadingSpinner';
+import MyProjects from './pages/MyProjects';
 
 // Hooks
 import { useAuth } from './hooks/useAuth';
@@ -67,21 +67,16 @@ function App() {
           <Route path="/projects/smart-create" element={<SmartProjectCreator />} />
           <Route path="/projects/:id" element={<ProjectView />} />
           <Route path="/projects/:id/edit" element={<ProjectForm />} />
+          <Route path="/my-projects" element={<MyProjects />} />
           
-          {/* Upload e Análise de Documentos */}
-          <Route path="/upload" element={<UploadDocument />} />
-          
-          {/* Perfil do Usuário */}
-          <Route path="/profile" element={<Profile />} />
+          {/* Upload e Perfil removidos temporariamente */}
+          {/* <Route path="/upload" element={<UploadDocument />} /> */}
+          {/* <Route path="/profile" element={<Profile />} /> */}
           
           {/* Redirecionamento padrão */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        
-        <Route path=\"/chat\" element={<Chat />} />
-      
-        <Route path=\"/tasks\" element={<Tasks />} />
-      
-        <Route path=\"/tasks/:id\" element={<TaskDetail />} />
+
+          <Route path="/chat" element={<Chat />} />
       </Routes>
       </Layout>
     </Box>

@@ -60,3 +60,26 @@ class TaskOut(TaskBase):
     updated_at: Optional[str] = None
     class Config:
         from_attributes = True
+
+
+# --- Project Members (Equipe) ---
+class ProjectMemberBase(BaseModel):
+    name: str = Field(..., max_length=200)
+    email: str = Field(..., max_length=320)
+    role: Optional[str] = Field(None, max_length=100)
+
+class ProjectMemberCreate(ProjectMemberBase):
+    pass
+
+class ProjectMemberUpdate(BaseModel):
+    name: Optional[str] = Field(None, max_length=200)
+    email: Optional[str] = Field(None, max_length=320)
+    role: Optional[str] = Field(None, max_length=100)
+
+class ProjectMemberOut(ProjectMemberBase):
+    id: int
+    project_id: int
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    class Config:
+        from_attributes = True

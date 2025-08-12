@@ -28,15 +28,12 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 
-import { uploadDocument, createProject } from '../services/apiService';
-import {
-  TIPOS_INICIATIVA,
-  CLASSIFICACOES,
-  FASES_IMPLEMENTACAO,
-  CATEGORIAS,
-  OBJETIVOS_ESTRATEGICOS,
-  helpers
-} from '../constants/formOptions';
+import { uploadDocument, createProject, uploadProjectAttachment } from '../services/apiService';
+import { tipoOptions as TIPOS_INICIATIVA, classificacaoOptions as CLASSIFICACOES, faseOptions as FASES_IMPLEMENTACAO } from '../constants/formOptions';
+// Ajuste temporário: categorias/objetivos e helpers não existem no formOptions.js atual
+const CATEGORIAS = ['Categoria 1','Categoria 2','Categoria 3']
+const OBJETIVOS_ESTRATEGICOS = []
+const helpers = { getIconeTipo: () => null }
 
 const SmartProjectCreator = () => {
   const navigate = useNavigate();
@@ -78,6 +75,7 @@ const SmartProjectCreator = () => {
     capa_iniciativa: null,
     categoria: ''
   });
+  const [attachmentFiles, setAttachmentFiles] = useState([]);
 
   const steps = [
     'Upload do Documento',
@@ -189,6 +187,13 @@ const SmartProjectCreator = () => {
       const result = await createProject(projectData);
       
       if (result) {
+        const createdId = result.id || result.project?.id || null;
+        // Upload de anexos vinculados
+        if (createdId && attachmentFiles.length > 0) {
+          for (const f of attachmentFiles) {
+            try { await uploadProjectAttachment(createdId, f); } catch (e) { /* silencioso */ }
+          }
+        }
         setActiveStep(3);
         toast.success('🎉 Projeto criado com sucesso!');
         
@@ -206,9 +211,9 @@ const SmartProjectCreator = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth={false} sx={{ mt: 4, mb: 4 }}>
       {/* Header */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap:'wrap', gap:1 }}>
         <Typography variant="h4" component="h1">
           🤖 Criação Inteligente de Projeto
         </Typography>
@@ -222,7 +227,7 @@ const SmartProjectCreator = () => {
       </Box>
 
       {/* Stepper */}
-      <Paper sx={{ p: 3, mb: 3 }}>
+      <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3 }}>
         <Stepper activeStep={activeStep} alternativeLabel>
           {steps.map((label) => (
             <Step key={label}>
@@ -234,7 +239,7 @@ const SmartProjectCreator = () => {
 
       {/* Step 0: Upload */}
       {activeStep === 0 && (
-        <Paper sx={{ p: 4 }}>
+        <Paper sx={{ p: { xs: 2, md: 4 } }}>
           <Box sx={{ textAlign: 'center' }}>
             <CloudUpload sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
             <Typography variant="h5" gutterBottom>
@@ -272,7 +277,7 @@ const SmartProjectCreator = () => {
 
       {/* Step 1: Analyzing */}
       {activeStep === 1 && (
-        <Paper sx={{ p: 4 }}>
+        <Paper sx={{ p: { xs: 2, md: 4 } }}>
           <Box sx={{ textAlign: 'center' }}>
             <AutoAwesome sx={{ fontSize: 64, color: 'secondary.main', mb: 2 }} />
             <Typography variant="h5" gutterBottom>
@@ -305,7 +310,7 @@ const SmartProjectCreator = () => {
             </Alert>
           )}
 
-          <Grid container spacing={3}>
+          <Grid container spacing={{ xs: 2, md: 3 }}>
             {/* SEÇÃO 1: IDENTIFICAÇÃO DA INICIATIVA */}
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold' }}>
@@ -394,7 +399,7 @@ const SmartProjectCreator = () => {
 
             {/* SEÇÃO 2: ALINHAMENTO ESTRATÉGICO */}
             <Grid item xs={12}>
-              <Divider sx={{ my: 2 }} />
+                 <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.08)' }} />
               <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold' }}>
                 🎯 2. Alinhamento Estratégico PEN-MP
               </Typography>
@@ -689,11 +694,16 @@ const SmartProjectCreator = () => {
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <Alert severity="info">
-                📄 <strong>Comprovação dos Resultados:</strong><br/>
-                Upload de arquivos que comprovam os resultados<br/>
-                <em>(Funcionalidade será implementada pela TI)</em>
-              </Alert>
+              <Box>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>📄 Comprovação dos Resultados</Typography>
+                <Button variant="outlined" component="label">
+                  Selecionar Anexos
+                  <input type="file" multiple hidden onChange={(e)=> setAttachmentFiles(Array.from(e.target.files||[]))} />
+                </Button>
+                <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                  {attachmentFiles.length > 0 ? `${attachmentFiles.length} arquivo(s) selecionado(s)` : 'Nenhum arquivo selecionado'}
+                </Typography>
+              </Box>
             </Grid>
 
             <Grid item xs={12} md={6}>

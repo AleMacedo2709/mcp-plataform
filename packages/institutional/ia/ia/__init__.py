@@ -1,1 +1,1 @@
-from . import api_openai
+# Deprecated legacy API kept empty intentionally

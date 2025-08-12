@@ -9,6 +9,9 @@ import { PublicClientApplication, EventType } from '@azure/msal-browser'
 import { MsalProvider } from '@azure/msal-react'
 
 import App from './App'
+import { ThemeProvider, CssBaseline } from '@mui/material'
+import './styles/tokens.css'
+import { appTheme } from './theme/theme'
 
 const isTest = process.env.REACT_APP_TEST_MODE === 'true'
 
@@ -27,11 +30,15 @@ const msalInstance = new PublicClientApplication({
 })
 
 // Em modo teste, não faremos login, mas mantemos provider para compatibilidade
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <MsalProvider instance={msalInstance}>
       <BrowserRouter>
-        <App />
+        <ThemeProvider theme={appTheme}>
+          <CssBaseline />
+          <App />
+        </ThemeProvider>
         <ToastContainer position="top-right" autoClose={3000} />
       </BrowserRouter>
     </MsalProvider>

@@ -24,16 +24,19 @@ def call_llm_api(final_prompt: str) -> str:
     
     Implementação baseada na versão otimizada de src/mcp_server/services/llm_service.py
     """
-    # Verificar se há chaves de API configuradas
+    # Flags e chaves
+    provider = os.getenv("LLM_PROVIDER", "openrouter").lower()
+    allow_demo = os.getenv("ALLOW_DEMO", "false").lower() == "true"
     azure_key = os.getenv('AZURE_OPENAI_API_KEY')
     openai_key = os.getenv('OPENAI_API_KEY')
     openrouter_key = os.getenv('OPENROUTER_API_KEY')
-    
+
+    # Se nenhuma chave configurada, respeitar ALLOW_DEMO
     if not any([azure_key, openai_key, openrouter_key]):
-        logger.warning("⚠️ Nenhuma chave de API configurada. Retornando dados de demonstração.")
-        return _create_demo_response()
-    
-    provider = os.getenv("LLM_PROVIDER", "openrouter").lower()
+        if allow_demo:
+            logger.warning("⚠️ Nenhuma chave de API configurada. Retornando dados de demonstração.")
+            return _create_demo_response()
+        raise ValueError("Nenhuma credencial de LLM configurada e ALLOW_DEMO=false")
     logger.info(f"🤖 Orquestração de Contexto - Provedor: {provider}")
     
     # Configuração SSL (False para desenvolvimento, True para produção)
@@ -44,7 +47,10 @@ def call_llm_api(final_prompt: str) -> str:
         client = None
         model_name = ""
 
-        if provider == "azure":
+        if provider == "demo":
+            # Forçar resposta de demonstração independentemente de chaves
+            return _create_demo_response()
+        elif provider == "azure":
             # Azure OpenAI
             api_key = os.getenv("AZURE_OPENAI_API_KEY")
             azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
@@ -73,18 +79,29 @@ def call_llm_api(final_prompt: str) -> str:
         elif provider == "openrouter":
             # OpenRouter  
             api_key = os.getenv("OPENROUTER_API_KEY")
-            model_name = os.getenv("OPENROUTER_MODEL", "anthropic/claude-3.5-sonnet")
+            # Prefer LLM_MODEL; fallback to OPENROUTER_MODEL
+            model_name = os.getenv("LLM_MODEL", os.getenv("OPENROUTER_MODEL", "anthropic/claude-3.5-sonnet"))
+            base_url = os.getenv("OPENROUTER_BASE", "https://openrouter.ai/api/v1")
+            http_referer = os.getenv("OPENROUTER_HTTP_REFERER", "http://localhost:5173")
+            app_title = os.getenv("OPENROUTER_APP_TITLE", "MCP Platform")
             
             if not api_key:
                 raise ValueError("Credencial OPENROUTER_API_KEY não configurada no .env")
             
             client = OpenAI(
-                base_url="https://openrouter.ai/api/v1",
+                base_url=base_url,
                 api_key=api_key,
-                http_client=http_client
+                http_client=http_client,
+                default_headers={
+                    # Recomendações do OpenRouter para melhor compatibilidade
+                    "HTTP-Referer": http_referer,
+                    "X-Title": app_title,
+                },
             )
 
         else:
+            if allow_demo:
+                return _create_demo_response()
             raise ValueError(f"Provedor de LLM '{provider}' não suportado.")
 
         # Fazer chamada para o LLM
@@ -108,6 +125,9 @@ def call_llm_api(final_prompt: str) -> str:
 
     except Exception as e:
         logger.error(f"❌ Erro ao chamar API do provedor {provider}: {e}")
+        if allow_demo:
+            logger.info("🎭 ALLOW_DEMO=true → retornando payload de demonstração")
+            return _create_demo_response()
         raise
     finally:
         if http_client:
@@ -122,33 +142,41 @@ def _create_demo_response() -> str:
     """
     import json
     
+    # Campos alinhados ao schema do persistence/frontend
     demo_data = {
+        "nome_da_iniciativa": "Sistema Inteligente de Análise de Documentos - DEMONSTRAÇÃO",
         "nome_iniciativa": "Sistema Inteligente de Análise de Documentos - DEMONSTRAÇÃO",
-        "tipo_iniciativa": "Modernização Tecnológica",
-        "classificacao": "Eficiência Administrativa",
+        "tipo_de_iniciativa": "Projeto",
+        "tipo_iniciativa": "Projeto",
+        "classificacao": "Ferramenta",
+        "natureza_da_iniciativa": "Sistema de IA para análise automatizada",
         "natureza_iniciativa": "Sistema de IA para análise automatizada",
         "iniciativa_vinculada": "Modernização Digital MP",
         "objetivo_estrategico_pen_mp": "Modernização e Eficiência",
         "programa_pen_mp": ["Gestão da Inovação", "Tecnologia da Informação"],
-        "promocao_objetivo_estrategico": "Implementação de IA para automatizar análise de documentos",
+        "promocao_do_objetivo_estrategico": "Automatizar análise de documentos",
+        "promocao_objetivo_estrategico": "Automatizar análise de documentos",
+        "data_inicial_de_operacao": "2025-01-01",
         "data_inicial_operacao": "2025-01-01",
-        "fase_implementacao": "Teste/Piloto",
-        "descricao": "Sistema de demonstração que utiliza inteligência artificial para análise automatizada de documentos institucionais, extraindo informações estruturadas e preenchendo formulários automaticamente.",
-        "estimativa_recursos": "R$ 150.000 (estimativa para demonstração)",
-        "publico_impactado": "Servidores do MP-SP, cidadãos beneficiados pela eficiência",
-        "orgaos_envolvidos": "MP-SP, Departamento de TI, Coordenadoria de Gestão Estratégica",
-        "contatos": "Coordenador de Inovação - inovacao@mp.sp.gov.br",
-        "desafio_1": "Automatizar processo manual de análise de documentos",
-        "desafio_2": "Reduzir tempo de processamento de formulários",
-        "desafio_3": "Melhorar precisão na extração de dados",
-        "resolutividade": "Sistema permite processar documentos 10x mais rápido que processo manual",
-        "inovacao": "Primeira implementação de IA para análise de documentos no MP-SP",
-        "transparencia": "Relatórios automáticos sobre processamento e resultados gerados",
-        "proatividade": "Sistema identifica padrões e sugere melhorias nos processos",
-        "cooperacao": "Integração com sistemas existentes e treinamento de equipes",
-        "resultado_1": "Redução de 80% no tempo de análise de documentos",
-        "resultado_2": "Aumento de 95% na precisão da extração de dados",
-        "resultado_3": "Melhoria na satisfação dos usuários em 90%",
+        "fase_de_implementacao": "Implementação parcial",
+        "fase_implementacao": "Implementação parcial",
+        "descricao": "Demonstração: IA extrai campos estruturados de documentos e preenche formulários.",
+        "estimativa_de_recursos": "R$ 150.000",
+        "estimativa_recursos": "R$ 150.000",
+        "publico_impactado": "Servidores do MP-SP",
+        "orgaos_envolvidos": "MP-SP; TI; CGE",
+        "contatos": "inovacao@mp.sp.gov.br",
+        "desafio_1": "Automatizar processo manual",
+        "desafio_2": "Reduzir tempo de processamento",
+        "desafio_3": "Elevar precisão da extração",
+        "resolutividade": "Permite ganho de 10x na velocidade de análise",
+        "inovacao": "Emprego de LLM e RAG",
+        "transparencia": "Geração de relatórios automáticos",
+        "proatividade": "Sinalização de inconsistências",
+        "cooperacao": "Integra integrações institucionais",
+        "resultado_1": "-80% tempo médio de análise",
+        "resultado_2": "+95% precisão informada",
+        "resultado_3": "+90% satisfação de usuários",
         "categoria": "Tecnologia e Inovação"
     }
     

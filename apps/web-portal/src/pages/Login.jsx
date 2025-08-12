@@ -8,7 +8,10 @@ import {
   Container,
   Avatar,
   Divider,
-  Alert
+  Alert,
+  Grid,
+  Chip,
+  Link as MuiLink
 } from '@mui/material';
 import {
   Microsoft as MicrosoftIcon,
@@ -25,137 +28,116 @@ const Login = () => {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 2
-      }}
-    >
-      <Container maxWidth="sm">
-        <Card
-          sx={{
-            borderRadius: 3,
-            boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-            overflow: 'hidden'
-          }}
-        >
-          {/* Header */}
-          <Box
-            sx={{
-              background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
-              color: 'white',
-              textAlign: 'center',
-              py: 4,
-              px: 3
-            }}
-          >
-            <Avatar
+    <Box sx={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
+      {/* Background mesh */}
+      <Box
+        sx={{
+          position: 'absolute', inset: 0,
+          background: `radial-gradient(1200px 600px at -10% -10%, rgba(0, 102, 204, 0.25), transparent 60%),
+                      radial-gradient(900px 500px at 110% 10%, rgba(0, 200, 255, 0.22), transparent 55%),
+                      linear-gradient(135deg, #0f172a 0%, #0b1020 100%)`,
+        }}
+      />
+      {/* Soft glow overlay */}
+      <Box sx={{ position: 'absolute', inset: 0, backdropFilter: 'blur(10px)', opacity: 0.35 }} />
+
+      <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1, py: { xs: 6, md: 10 } }}>
+        <Grid container spacing={6} alignItems="center">
+          {/* Left: Hero copy */}
+          <Grid item xs={12} md={7}>
+            <Typography
+              variant="h2"
               sx={{
-                bgcolor: 'rgba(255,255,255,0.2)',
-                width: 80,
-                height: 80,
-                mx: 'auto',
+                fontWeight: 800,
+                lineHeight: 1.1,
+                color: 'white',
                 mb: 2,
-                fontSize: '2rem'
               }}
             >
-              🤖
-            </Avatar>
-            <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
-              MCP - Sistema de IA
+              Plataforma Inteligente de
+              <Box component="span" sx={{ color: '#60a5fa' }}> Gestão</Box> e
+              <Box component="span" sx={{ color: '#34d399' }}> Análise</Box> de Projetos
             </Typography>
-            <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
-              Análise Inteligente de Documentos
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.8, mt: 1 }}>
-              Ministério Público do Estado de São Paulo
-            </Typography>
-          </Box>
 
-          <CardContent sx={{ p: 4 }}>
-            {/* Informações do Sistema */}
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" gutterBottom color="primary" fontWeight="500">
-                Acesso Seguro via Microsoft 365
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Faça login com sua conta institucional do Ministério Público para acessar
-                o sistema de análise de documentos com inteligência artificial.
-              </Typography>
+            <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.8)', mb: 4 }}>
+              Submeta, gerencie e conecte projetos a dados institucionais com automação por IA e governança.
+            </Typography>
 
-              {/* Features */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <SecurityIcon color="primary" />
-                  <Typography variant="body2">
-                    Autenticação segura via Azure Active Directory
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <BusinessIcon color="primary" />
-                  <Typography variant="body2">
-                    Acesso restrito a funcionários autorizados do MP
-                  </Typography>
-                </Box>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 5 }}>
+              <Chip label="Login seguro Azure AD" color="primary" variant="outlined" sx={{ bgcolor: 'rgba(59,130,246,0.15)', color: '#93c5fd', borderColor: 'rgba(147,197,253,0.4)' }} />
+              <Chip label="Integração institucional" color="success" variant="outlined" sx={{ bgcolor: 'rgba(16,185,129,0.12)', color: '#86efac', borderColor: 'rgba(134,239,172,0.4)' }} />
+              <Chip label="RAG + LLM" variant="outlined" sx={{ bgcolor: 'rgba(250,250,250,0.08)', color: 'rgba(255,255,255,0.8)', borderColor: 'rgba(255,255,255,0.2)' }} />
+            </Box>
+
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+              Suporte: <MuiLink href="mailto:suporte@mp.sp.gov.br" sx={{ color: '#93c5fd' }}>suporte@mp.sp.gov.br</MuiLink>
+            </Typography>
+          </Grid>
+
+          {/* Right: Sign-in card */}
+          <Grid item xs={12} md={5}>
+            <Card sx={{
+              borderRadius: 4,
+              bgcolor: 'rgba(17,24,39,0.7)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              backdropFilter: 'blur(8px)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.4)'
+            }}>
+              <Box sx={{ textAlign: 'center', pt: 4, px: 4 }}>
+                <Avatar src="/logo.png" alt="MPSP Projetos" sx={{ width: 72, height: 72, mx: 'auto', mb: 2, bgcolor: 'transparent' }} />
+                <Typography variant="h5" sx={{ color: 'white', fontWeight: 800 }}>MPSP Projetos</Typography>
+                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', mt: 1 }}>Use suas credenciais institucionais</Typography>
               </Box>
-            </Box>
 
-            <Divider sx={{ my: 3 }} />
+              <CardContent sx={{ p: 4 }}>
+                {/* Error Alert */}
+                {error && (
+                  <Alert severity="error" sx={{ mb: 3 }}>
+                    {error}
+                  </Alert>
+                )}
 
-            {/* Error Alert */}
-            {error && (
-              <Alert severity="error" sx={{ mb: 3 }}>
-                {error}
-              </Alert>
-            )}
+                <Button
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  onClick={handleLogin}
+                  disabled={isLoading}
+                  startIcon={<MicrosoftIcon />}
+                  sx={{
+                    py: 1.6,
+                    fontSize: '1.06rem',
+                    fontWeight: 700,
+                    letterSpacing: 0.2,
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
+                    boxShadow: '0 10px 24px rgba(37,99,235,0.35)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%)',
+                      boxShadow: '0 12px 28px rgba(37,99,235,0.45)'
+                    },
+                    '&:disabled': { background: '#334155' }
+                  }}
+                >
+                  {isLoading ? 'Entrando...' : 'Entrar com Microsoft 365'}
+                </Button>
 
-            {/* Login Button */}
-            <Button
-              fullWidth
-              variant="contained"
-              size="large"
-              onClick={handleLogin}
-              disabled={isLoading}
-              startIcon={<MicrosoftIcon />}
-              sx={{
-                py: 1.5,
-                fontSize: '1.1rem',
-                fontWeight: 600,
-                background: 'linear-gradient(135deg, #0078d4 0%, #106ebe 100%)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #106ebe 0%, #005a9e 100%)',
-                },
-                '&:disabled': {
-                  background: '#ccc',
-                }
-              }}
-            >
-              {isLoading ? 'Entrando...' : 'Entrar com Microsoft 365'}
-            </Button>
+                <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.08)' }} />
 
-            {/* Footer Info */}
-            <Box sx={{ mt: 4, textAlign: 'center' }}>
-              <Typography variant="caption" color="text.secondary">
-                Ao fazer login, você concorda com os termos de uso do sistema.
-              </Typography>
-              <br />
-              <Typography variant="caption" color="text.secondary">
-                Para suporte técnico, entre em contato com a equipe de TI.
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                    Ao fazer login, você concorda com os termos de uso e políticas de segurança.
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
 
-        {/* Footer */}
-        <Box sx={{ textAlign: 'center', mt: 3 }}>
-          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-            © 2024 Ministério Público do Estado de São Paulo
+        <Box sx={{ textAlign: 'center', mt: 6 }}>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+            © 2025 Ministério Público do Estado de São Paulo
           </Typography>
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)' }}>
             Desenvolvido pela Coordenadoria de Gestão Estratégica
           </Typography>
         </Box>

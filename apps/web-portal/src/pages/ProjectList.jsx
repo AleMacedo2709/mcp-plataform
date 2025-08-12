@@ -37,6 +37,8 @@ import {
   FileDownload as DownloadIcon
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'react-toastify';
@@ -47,6 +49,9 @@ import LoadingSpinner from '../components/LoadingSpinner';
 
 const ProjectList = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isXs = useMediaQuery(theme.breakpoints.down('sm'));
+  const isSm = useMediaQuery(theme.breakpoints.down('md'));
   const { user, hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -85,7 +90,14 @@ const ProjectList = () => {
       };
 
       const response = await projectService.getAll(params);
-      setProjects(response.projects || []);
+      const mapped = (response.projects || []).map(p => ({
+        ...p,
+        nome_iniciativa: p.nome_da_iniciativa || p.nome_iniciativa,
+        tipo_iniciativa: p.tipo_de_iniciativa || p.tipo_iniciativa,
+        fase: p.fase_de_implementacao || p.fase_implementacao || p.fase,
+        data_inicial_operacao: p.data_inicial_de_operacao || p.data_inicial_operacao
+      }))
+      setProjects(mapped);
       setTotal(response.total || 0);
       setError(null);
     } catch (err) {
@@ -188,7 +200,7 @@ const ProjectList = () => {
     {
       field: 'data_inicial_operacao',
       headerName: 'Data Inicial',
-      width: 120,
+      width: 130,
       renderCell: (params) => {
         if (!params.value) return '-';
         try {
@@ -201,7 +213,7 @@ const ProjectList = () => {
     {
       field: 'created_at',
       headerName: 'Criado em',
-      width: 120,
+      width: 140,
       renderCell: (params) => {
         if (!params.value) return '-';
         try {
@@ -241,10 +253,10 @@ const ProjectList = () => {
       {/* Header */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
+          <Typography variant="h4" component="h1" gutterBottom sx={{ color: 'text.primary', fontWeight: 800 }}>
             Projetos Cadastrados
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             Gerencie todos os projetos do sistema
           </Typography>
         </Box>
@@ -264,8 +276,8 @@ const ProjectList = () => {
       {/* Filtros e Busca */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} md={4}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={6} md={4}>
               <TextField
                 fullWidth
                 placeholder="Buscar projetos..."
@@ -278,10 +290,16 @@ const ProjectList = () => {
                     </InputAdornment>
                   ),
                 }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'rgba(255,255,255,0.04)'
+                  },
+                  '& input::placeholder': { color: 'rgba(229,231,235,0.7)' }
+                }}
               />
             </Grid>
             
-            <Grid item xs={12} md={2}>
+            <Grid item xs={6} sm={3} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Tipo</InputLabel>
                 <Select
@@ -297,7 +315,7 @@ const ProjectList = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={2}>
+            <Grid item xs={6} sm={3} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Classificação</InputLabel>
                 <Select
@@ -313,7 +331,7 @@ const ProjectList = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={2}>
+            <Grid item xs={6} sm={3} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Status</InputLabel>
                 <Select
@@ -329,18 +347,12 @@ const ProjectList = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={2}>
-              <Button
-                fullWidth
-                variant="outlined"
+            <Grid item xs={12} sm={3} md={2}>
+              <Button fullWidth variant="contained" color="primary"
                 startIcon={<FilterIcon />}
-                onClick={() => {
-                  setSearch('');
-                  setFilters({ tipo_iniciativa: '', classificacao: '', fase: '' });
-                }}
-              >
-                Limpar
-              </Button>
+                onClick={() => { setSearch(''); setFilters({ tipo_iniciativa: '', classificacao: '', fase: '' }); }}
+                sx={{ fontWeight: 700 }}
+              >Limpar</Button>
             </Grid>
           </Grid>
         </CardContent>
@@ -354,7 +366,7 @@ const ProjectList = () => {
       )}
 
       {/* Data Grid */}
-      <Card>
+      <Card sx={{ bgcolor: 'rgba(17,24,39,0.7)', border: '1px solid rgba(255,255,255,0.06)' }}>
         <Box sx={{ height: 600, width: '100%' }}>
           <DataGrid
             rows={projects}
@@ -368,6 +380,12 @@ const ProjectList = () => {
             paginationMode="server"
             loading={loading}
             disableSelectionOnClick
+            autoHeight={isXs}
+            columnVisibilityModel={{
+              classificacao: !isSm,
+              data_inicial_operacao: !isSm,
+              created_at: !isSm
+            }}
             localeText={{
               // Tradução para português
               noRowsLabel: 'Nenhum projeto encontrado',
@@ -375,13 +393,19 @@ const ProjectList = () => {
             }}
             sx={{
               border: 'none',
-              '& .MuiDataGrid-cell': {
-                borderBottom: '1px solid #f0f0f0',
-              },
+              color: 'text.primary',
+              '& .MuiDataGrid-cell': { borderBottom: '1px solid rgba(255,255,255,0.06)' },
               '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: '#f8f9fa',
-                borderBottom: '2px solid #e9ecef',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                color: 'text.secondary'
               },
+              '& .MuiDataGrid-footerContainer': {
+                borderTop: '1px solid rgba(255,255,255,0.08)'
+              },
+              '& .MuiDataGrid-virtualScroller': {
+                overflowX: 'hidden'
+              }
             }}
           />
         </Box>

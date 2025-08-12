@@ -110,12 +110,30 @@ class LLMAnalyzer:
         logger.info(f"🤖 Iniciando análise com contrato: {contract_name}")
         
         try:
-            # 1. Verificar se contrato existe
-            if contract_name not in self.prompts_cache:
-                available = list(self.prompts_cache.keys())
-                raise ValueError(f"Contrato '{contract_name}' não encontrado. Disponíveis: {available}")
-            
-            contract = self.prompts_cache[contract_name]
+            # 1. Resolver contrato (case/alias)
+            key = contract_name
+            if key not in self.prompts_cache:
+                # normalizar e tentar aproximações
+                lc = contract_name.lower()
+                resolved = None
+                for k in self.prompts_cache.keys():
+                    kl = k.lower()
+                    if kl == lc or kl.startswith(lc) or lc.startswith(kl):
+                        resolved = k
+                        break
+                if not resolved and not lc.endswith("_2025"):
+                    # tentar com sufixo mais comum
+                    cand = f"{contract_name}_2025"
+                    for k in self.prompts_cache.keys():
+                        if k.lower() == cand.lower():
+                            resolved = k
+                            break
+                if not resolved:
+                    available = list(self.prompts_cache.keys())
+                    raise ValueError(f"Contrato '{contract_name}' não encontrado. Disponíveis: {available}")
+                key = resolved
+
+            contract = self.prompts_cache[key]
             
             # 2. Montar prompt final
             final_prompt = self._build_final_prompt(contract, extracted_text)
@@ -126,8 +144,9 @@ class LLMAnalyzer:
             # 4. Processar resposta
             structured_data = self._process_llm_response(response_text, contract)
             
-            # 5. Validar contra schema
-            validated_data = self._validate_against_schema(structured_data, contract["output_schema"])
+            # 5. Validar contra schema e aplicar limites CSV (se houver)
+            validated_data = self._validate_against_schema_contract(structured_data, contract["output_schema"])
+            validated_data = self._apply_csv_limits(validated_data)
             
             logger.info(f"✅ Análise concluída: {len(validated_data)} campos extraídos")
             return validated_data
@@ -231,7 +250,7 @@ JSON DE SAÍDA:
         # Se não encontrar, retornar texto original
         return text
 
-    def _validate_against_schema(self, data: Dict[str, Any], schema: Dict[str, Any]) -> Dict[str, Any]:
+    def _validate_against_schema_contract(self, data: Dict[str, Any], schema: Dict[str, Any]) -> Dict[str, Any]:
         """
         ✅ Valida dados contra schema e aplica regras de negócio
         """
@@ -376,8 +395,8 @@ RESPOSTA (apenas o texto adequado, sem explicações):
         self.prompts_cache.clear()
         self._load_prompt_contracts()
 
-    def _validate_against_schema(self, data: dict) -> dict:
-        """Override: valida usando CSV dinâmico se disponível."""
+    def _apply_csv_limits(self, data: dict) -> dict:
+        """Aplica limites de tamanho baseado no CSV, se disponível (pós-validação)."""
         import os
         specs = {}
         try:
@@ -385,12 +404,11 @@ RESPOSTA (apenas o texto adequado, sem explicações):
                 specs = load_specs(CSV_SCHEMA_PATH)
         except Exception:
             specs = {}
-        # fallback para validação existente, se definida
-        validated = data.copy()
+        adjusted = data.copy()
         if specs:
-            for k, v in list(validated.items()):
+            for k, v in list(adjusted.items()):
                 if k in specs:
                     max_len = specs[k].get('maxLength')
                     if isinstance(v, str) and max_len:
-                        validated[k] = v[:max_len]
-        return validated
+                        adjusted[k] = v[:max_len]
+        return adjusted

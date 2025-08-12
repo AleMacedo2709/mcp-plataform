@@ -9,10 +9,12 @@ import {
   Grid,
   Chip,
   Divider,
-  Alert
+  Alert,
+  Link as MuiLink
 } from '@mui/material';
-import { ArrowBack, Edit, Delete } from '@mui/icons-material';
-import { getProject, deleteProject } from '../services/apiService';
+import { ArrowBack, Edit, Delete, Download } from '@mui/icons-material';
+import { getProject, listProjectAttachments, API_BASE_URL, projectService } from '../services/apiService';
+import MembersTab from './project/MembersTab';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'react-toastify';
 
@@ -25,6 +27,7 @@ const ProjectView = () => {
   const navigate = useNavigate();
   
   const [project, setProject] = useState(null);
+  const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -34,6 +37,12 @@ const ProjectView = () => {
         setLoading(true);
         const data = await getProject(id);
         setProject(data);
+        try {
+          const atts = await listProjectAttachments(id);
+          setAttachments(atts || []);
+        } catch (e) {
+          setAttachments([]);
+        }
       } catch (err) {
         setError('Erro ao carregar projeto');
         console.error('Erro ao buscar projeto:', err);
@@ -55,7 +64,7 @@ const ProjectView = () => {
   const handleDelete = async () => {
     if (window.confirm('Tem certeza que deseja excluir este projeto?')) {
       try {
-        await deleteProject(id);
+        await projectService.delete(id);
         toast.success('Projeto excluído com sucesso!');
         navigate('/projects');
       } catch (err) {
@@ -89,22 +98,22 @@ const ProjectView = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth={false} sx={{ mt: 4, mb: 4 }}>
       {/* Header */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
         <Box>
           <Typography variant="h4" component="h1" gutterBottom>
-            📄 {project.nome_iniciativa || 'Projeto'}
+            📄 {project.nome_da_iniciativa || project.nome_iniciativa || 'Projeto'}
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-            {project.tipo_iniciativa && (
-              <Chip label={project.tipo_iniciativa} color="primary" size="small" />
+            { (project.tipo_de_iniciativa || project.tipo_iniciativa) && (
+              <Chip label={project.tipo_de_iniciativa || project.tipo_iniciativa} color="primary" size="small" />
             )}
             {project.classificacao && (
               <Chip label={project.classificacao} color="secondary" size="small" />
             )}
-            {project.fase && (
-              <Chip label={project.fase} color="success" size="small" />
+            { (project.fase_de_implementacao || project.fase) && (
+              <Chip label={project.fase_de_implementacao || project.fase} color="success" size="small" />
             )}
           </Box>
         </Box>
@@ -136,8 +145,45 @@ const ProjectView = () => {
       </Box>
 
       {/* Conteúdo */}
-      <Paper sx={{ p: 3 }}>
-        <Grid container spacing={3}>
+      <Paper sx={{ p: { xs: 2, md: 3 } }}>
+        <Grid container spacing={{ xs: 2, md: 3 }}>
+          {/* Anexos */}
+          {attachments && attachments.length > 0 && (
+            <>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 3 }}>
+                  📎 Anexos
+                </Typography>
+                   <Divider sx={{ mb: 2, borderColor: 'rgba(255,255,255,0.08)' }} />
+              </Grid>
+              <Grid item xs={12}>
+                {attachments.map((a, idx) => {
+                  const downloadUrl = `${API_BASE_URL}/projects/${id}/attachments/${a.id}/download`;
+                  return (
+                    <Box key={idx} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      <MuiLink href={a.stored_path} target="_blank" rel="noopener" sx={{ wordBreak: 'break-all' }}>
+                        {a.original_name || a.stored_path}
+                      </MuiLink>
+                      <Button
+                        variant="text"
+                        size="small"
+                        startIcon={<Download />}
+                        component="a"
+                        href={downloadUrl}
+                      >
+                        Baixar
+                      </Button>
+                      {typeof a.size_bytes === 'number' && (
+                        <Typography variant="caption" color="text.secondary">
+                          {(a.size_bytes / 1024).toFixed(1)} KB
+                        </Typography>
+                      )}
+                    </Box>
+                  );
+                })}
+              </Grid>
+            </>
+          )}
           {/* Informações Básicas */}
           <Grid item xs={12}>
             <Typography variant="h6" gutterBottom color="primary">
@@ -298,6 +344,11 @@ const ProjectView = () => {
           )}
         </Grid>
       </Paper>
+
+      {/* Equipe do Projeto */}
+      <Box sx={{ mt: 3 }}>
+        <MembersTab projectId={id} />
+      </Box>
     </Container>
   );
 };

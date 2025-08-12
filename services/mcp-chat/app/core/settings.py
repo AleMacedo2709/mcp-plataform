@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 ENV = os.getenv("ENVIRONMENT", "local").lower()
 env_file = os.getenv("ENV_FILE", f".env.{ENV}")
@@ -16,13 +17,7 @@ class Settings(BaseModel):
 
 settings = Settings()
 
-try:
-    _root_env = Path(__file__).resolve().parents[3] / '.env.shared'
-    , override=False)
-except Exception:
-    pass
-
-# Load shared env only
+# Load shared env
 try:
     _root_env = Path(__file__).resolve().parents[3] / '.env.shared'
     load_dotenv(str(_root_env), override=True)

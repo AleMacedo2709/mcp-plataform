@@ -12,48 +12,21 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "openai>=1.40.0",
     "httpx>=0.27.0",
+    "mcp>=1.0.0",
+    "scikit-learn>=1.5.0",
+    "sentence-transformers>=3.0.0",
+    "prometheus-client>=0.20.0",
+    "rank-bm25>=0.2.2",
+    "opentelemetry-sdk>=1.26.0",
+    "opentelemetry-instrumentation-fastapi>=0.46b0",
+    "opentelemetry-exporter-otlp>=1.26.0"
 ]
 
 [tool.uv]
 dev-dependencies = ["ruff>=0.5.0","pytest>=8.2.0"]
 
-# MCP SDK
-[project]
-dependencies = [
-"fastapi>=0.111.0",
-"uvicorn[standard]>=0.30.0",
-"pydantic>=2.7.0",
-"SQLAlchemy>=2.0.30",
-"psycopg2-binary>=2.9.9",
-"python-dotenv>=1.0.1",
-"openai>=1.40.0",
-"httpx>=0.27.0",
-"mcp>=1.0.0"
-]
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
 
-# RAG
-[project]
-dependencies = [
-"scikit-learn>=1.5.0",
-]
-
-# Embeddings + metrics
-[project]
-dependencies = [
-"sentence-transformers>=3.0.0",
-"prometheus-client>=0.20.0"
-]
-
-# Persistent RAG deps
-[project]
-dependencies = [
-"rank-bm25>=0.2.2"
-]
-
-# OpenTelemetry
-[project]
-dependencies = [
-"opentelemetry-sdk>=1.26.0"
-"opentelemetry-instrumentation-fastapi>=0.46b0"
-"opentelemetry-exporter-otlp>=1.26.0"
-]
+[tool.hatch.build.targets.editable]
+packages = ["app"]

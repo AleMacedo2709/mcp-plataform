@@ -1,12 +1,20 @@
 from pathlib import Path
 from fastapi import FastAPI
 from dotenv import load_dotenv
-from pathlib import Path
+import sys
+import logging
+try:
+    _app_root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(_app_root))
+    sys.path.insert(0, str(_app_root / 'packages'))
+except Exception:
+    pass
+
 from packages.institutional.tools.jsonlog import configure_json_logging
 from packages.institutional.tools.tracing import setup_tracing
 from packages.institutional.tools.security_headers import SecurityHeadersMiddleware
 from packages.institutional.tools.metrics import MetricsMiddleware, metrics_endpoint
-from packages.institutional.tools.telemetry import RequestIdMiddleware, Depends, Query
+from packages.institutional.tools.telemetry import RequestIdMiddleware
 from pydantic import BaseModel
 from typing import Optional
 import os

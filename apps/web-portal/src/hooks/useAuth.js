@@ -13,5 +13,12 @@ export function useAuth() {
     return acc ? { name: acc.name, email: acc.username } : null
   }, [accounts, isTest])
 
-  return { isLoading: false, user }
+  const hasPermission = (role) => {
+    // Modo teste: permitir tudo
+    if (isTest) return true
+    // Produção: ajuste conforme claims/roles do Azure AD quando necessário
+    return !!user
+  }
+
+  return { isLoading: false, user, hasPermission }
 }
