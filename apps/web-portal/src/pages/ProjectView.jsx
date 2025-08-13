@@ -10,17 +10,24 @@ import {
   Chip,
   Divider,
   Alert,
-  Link as MuiLink
+  Link as MuiLink,
+  Tabs,
+  Tab
 } from '@mui/material';
-import { ArrowBack, Edit, Delete, Download } from '@mui/icons-material';
+import { ArrowBack, Edit, Delete, Download, ThumbUp } from '@mui/icons-material';
 import { getProject, listProjectAttachments, API_BASE_URL, projectService } from '../services/apiService';
+import { useAuth } from '../hooks/useAuth';
 import MembersTab from './project/MembersTab';
+import ActionsTab from './project/ActionsTab';
+import ContactsTab from './project/ContactsTab';
+import ResultsTab from './project/ResultsTab';
+import AwardsTab from './project/AwardsTab';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'react-toastify';
 
 /**
- * 👁️ Página de Visualização de Projeto
- * Exibe detalhes completos de um projeto
+ * 👁️ Página de Visualização de Iniciativa
+ * Exibe detalhes completos de uma iniciativa
  */
 const ProjectView = () => {
   const { id } = useParams();
@@ -30,6 +37,9 @@ const ProjectView = () => {
   const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [likes, setLikes] = useState(0);
+  const { user } = useAuth();
+  const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -43,6 +53,17 @@ const ProjectView = () => {
         } catch (e) {
           setAttachments([]);
         }
+        try {
+          const res = await fetch(`${API_BASE_URL}/projects/${id}/likes`)
+          const d = await res.json(); setLikes(d.likes||0)
+        } catch {}
+        try {
+          const ms = await fetch(`${API_BASE_URL}/projects/${id}/members`).then(r=>r.json()).catch(()=>[])
+          const me = (user?.email || '').toLowerCase()
+          const owner = (data?.owner || '').toLowerCase()
+          const isMember = Array.isArray(ms) && ms.some(m=> (m.email||'').toLowerCase() === me)
+          setCanEdit(!!me && (me === owner || isMember))
+        } catch {}
       } catch (err) {
         setError('Erro ao carregar projeto');
         console.error('Erro ao buscar projeto:', err);
@@ -65,7 +86,7 @@ const ProjectView = () => {
     if (window.confirm('Tem certeza que deseja excluir este projeto?')) {
       try {
         await projectService.delete(id);
-        toast.success('Projeto excluído com sucesso!');
+        toast.success('Iniciativa excluída com sucesso!');
         navigate('/projects');
       } catch (err) {
         toast.error('Erro ao excluir projeto');
@@ -73,6 +94,14 @@ const ProjectView = () => {
       }
     }
   };
+
+  const handleLike = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/projects/${id}/likes`, { method:'POST', headers: projectService.headers('user') })
+      const res = await fetch(`${API_BASE_URL}/projects/${id}/likes`)
+      const d = await res.json(); setLikes(d.likes||0)
+    } catch {}
+  }
 
   if (loading) {
     return <LoadingSpinner message="Carregando projeto..." />;
@@ -82,7 +111,7 @@ const ProjectView = () => {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         <Alert severity="error">
-          {error || 'Projeto não encontrado'}
+          {error || 'Iniciativa não encontrada'}
         </Alert>
         <Box sx={{ mt: 2 }}>
           <Button
@@ -90,12 +119,14 @@ const ProjectView = () => {
             startIcon={<ArrowBack />}
             onClick={() => navigate('/projects')}
           >
-            Voltar para Projetos
+            Voltar para Iniciativas
           </Button>
         </Box>
       </Container>
     );
   }
+
+  const [tab, setTab] = useState(0)
 
   return (
     <Container maxWidth={false} sx={{ mt: 4, mb: 4 }}>
@@ -103,7 +134,7 @@ const ProjectView = () => {
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
         <Box>
           <Typography variant="h4" component="h1" gutterBottom>
-            📄 {project.nome_da_iniciativa || project.nome_iniciativa || 'Projeto'}
+            📄 {project.nome_da_iniciativa || project.nome_iniciativa || 'Iniciativa'}
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             { (project.tipo_de_iniciativa || project.tipo_iniciativa) && (
@@ -126,6 +157,8 @@ const ProjectView = () => {
           >
             Voltar
           </Button>
+          <Button variant="outlined" startIcon={<ThumbUp />} onClick={handleLike}>Curtir ({likes})</Button>
+          <Button variant="outlined" startIcon={<Download />} onClick={()=> window.print()}>Baixar (PDF)</Button>
           <Button
             variant="contained"
             startIcon={<Edit />}
@@ -144,8 +177,18 @@ const ProjectView = () => {
         </Box>
       </Box>
 
-      {/* Conteúdo */}
+      {/* Abas */}
       <Paper sx={{ p: { xs: 2, md: 3 } }}>
+        <Tabs value={tab} onChange={(_,v)=> setTab(v)} sx={{ mb: 2 }}>
+          <Tab label="Dados da Iniciativa" />
+          <Tab label="Equipe" />
+          <Tab label="Ações" />
+          <Tab label="Contatos" />
+          <Tab label="Comprovação de Resultados" />
+          <Tab label="Prêmio CNMP" />
+        </Tabs>
+
+        {tab === 0 && (
         <Grid container spacing={{ xs: 2, md: 3 }}>
           {/* Anexos */}
           {attachments && attachments.length > 0 && (
@@ -304,6 +347,30 @@ const ProjectView = () => {
             </>
           )}
 
+          {/* Campos adicionais solicitados */}
+          {(project.unidade_gestora || project.selo) && (
+            <>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 3 }}>
+                  🏛️ Gestão
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+              </Grid>
+              {project.unidade_gestora && (
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2"><strong>Unidade Gestora:</strong></Typography>
+                  <Typography variant="body2">{project.unidade_gestora}</Typography>
+                </Grid>
+              )}
+              {project.selo && (
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2"><strong>Selo:</strong></Typography>
+                  <Typography variant="body2">{project.selo}</Typography>
+                </Grid>
+              )}
+            </>
+          )}
+
           {/* Metadados */}
           <Grid item xs={12}>
             <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 3 }}>
@@ -314,7 +381,7 @@ const ProjectView = () => {
 
           <Grid item xs={12} md={6}>
             <Typography variant="subtitle2" gutterBottom>
-              <strong>ID do Projeto:</strong>
+              <strong>ID da Iniciativa:</strong>
             </Typography>
             <Typography variant="body2">
               {project.id || project.project_id}
@@ -343,12 +410,33 @@ const ProjectView = () => {
             </Grid>
           )}
         </Grid>
+        )}
+        {tab === 1 && (
+          <Box sx={{ mt: 1 }}>
+            <MembersTab projectId={id} canEdit={canEdit} />
+          </Box>
+        )}
+        {tab === 2 && (
+          <Box sx={{ mt: 1 }}>
+            <ActionsTab projectId={id} canEdit={canEdit} />
+          </Box>
+        )}
+        {tab === 3 && (
+          <Box sx={{ mt: 1 }}>
+            <ContactsTab projectId={id} canEdit={canEdit} />
+          </Box>
+        )}
+        {tab === 4 && (
+          <Box sx={{ mt: 1 }}>
+            <ResultsTab projectId={id} canEdit={canEdit} />
+          </Box>
+        )}
+        {tab === 5 && (
+          <Box sx={{ mt: 1 }}>
+            <AwardsTab projectId={id} canEdit={canEdit} />
+          </Box>
+        )}
       </Paper>
-
-      {/* Equipe do Projeto */}
-      <Box sx={{ mt: 3 }}>
-        <MembersTab projectId={id} />
-      </Box>
     </Container>
   );
 };

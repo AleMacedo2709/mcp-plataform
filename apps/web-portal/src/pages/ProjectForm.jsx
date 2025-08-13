@@ -6,7 +6,10 @@ import { ArrowBack, Save } from '@mui/icons-material'
 import { getProject, updateProject, createProject, uploadProjectCover, uploadProjectAttachment, API_BASE_URL, projectService } from '../services/apiService'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { toast } from 'react-toastify'
-import { tipoOptions, classificacaoOptions, faseOptions } from '../constants/formOptions'
+import { tipoOptions, classificacaoOptions, faseOptions, seloOptions, premioCnmpCategorias } from '../constants/formOptions'
+import TeamFields from '../components/TeamFields'
+import ContactsFields from '../components/ContactsFields'
+import ResultsFields from '../components/ResultsFields'
 
 const ProjectForm = () => {
   const location = useLocation()
@@ -21,6 +24,8 @@ const ProjectForm = () => {
     nome_da_iniciativa: '',
     tipo_de_iniciativa: '',
     classificacao: '',
+    unidade_gestora: '',
+    selo: '',
     natureza_da_iniciativa: '',
     iniciativa_vinculada: '',
     objetivo_estrategico_pen_mp: '',
@@ -32,7 +37,6 @@ const ProjectForm = () => {
     estimativa_de_recursos: '',
     publico_impactado: '',
     orgaos_envolvidos: '',
-    contatos: '',
     desafio_1: '',
     desafio_2: '',
     desafio_3: '',
@@ -44,13 +48,16 @@ const ProjectForm = () => {
     resultado_1: '',
     resultado_2: '',
     resultado_3: '',
-    comprovacao_dos_resultados: '',
+    // comprovacao_dos_resultados removido; usar lista de provas
     capa_da_iniciativa: '',
     categoria: ''
   })
   const [coverFile, setCoverFile] = useState(null)
   const [attachmentFiles, setAttachmentFiles] = useState([])
   const [members, setMembers] = useState([{ name:'', email:'', role:'' }])
+  const [contacts, setContacts] = useState([{ nome:'', email:'' }])
+  const [results, setResults] = useState([{ data_da_coleta:'', resultado:'' }])
+  const [awards, setAwards] = useState([{ ano:'', categoria:'' }])
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -60,6 +67,8 @@ const ProjectForm = () => {
     nome_da_iniciativa: 300,
     tipo_de_iniciativa: 300,
     classificacao: 300,
+    unidade_gestora: 200,
+    selo: 50,
     natureza_da_iniciativa: 100,
     iniciativa_vinculada: 300,
     objetivo_estrategico_pen_mp: 300,
@@ -115,6 +124,8 @@ const ProjectForm = () => {
           nome_da_iniciativa: data.nome_da_iniciativa || data.nome_iniciativa || '',
           tipo_de_iniciativa: data.tipo_de_iniciativa || data.tipo_iniciativa || '',
           classificacao: data.classificacao || '',
+          unidade_gestora: data.unidade_gestora || '',
+          selo: data.selo || '',
           natureza_da_iniciativa: data.natureza_da_iniciativa || '',
           iniciativa_vinculada: data.iniciativa_vinculada || '',
           objetivo_estrategico_pen_mp: data.objetivo_estrategico_pen_mp || '',
@@ -126,7 +137,7 @@ const ProjectForm = () => {
           estimativa_de_recursos: data.estimativa_de_recursos || '',
           publico_impactado: data.publico_impactado || '',
           orgaos_envolvidos: data.orgaos_envolvidos || '',
-          contatos: data.contatos || '',
+           // contatos retirado
           desafio_1: data.desafio_1 || '',
           desafio_2: data.desafio_2 || '',
           desafio_3: data.desafio_3 || '',
@@ -138,10 +149,15 @@ const ProjectForm = () => {
           resultado_1: data.resultado_1 || '',
           resultado_2: data.resultado_2 || '',
           resultado_3: data.resultado_3 || '',
-          comprovacao_dos_resultados: data.comprovacao_dos_resultados || '',
+           // comprovacao_dos_resultados retirado
           capa_da_iniciativa: data.capa_da_iniciativa || '',
           categoria: data.categoria || ''
         })
+        // Carregar prêmios existentes
+        try {
+          const r = await fetch(`${API_BASE_URL}/projects/${id}/awards`).then(r=> r.json()).catch(()=>[])
+          if (Array.isArray(r)) setAwards(r.map(a=> ({ ano: a.ano || '', categoria: a.categoria || '' })))
+        } catch {}
       } catch (err) {
         setError('Erro ao carregar projeto')
         console.error('Erro ao buscar projeto:', err)
@@ -179,11 +195,35 @@ const ProjectForm = () => {
             })
           }
         }
+        if (Array.isArray(contacts)) {
+          for (const c of contacts) {
+            if (!c || !c.nome || !c.email) continue
+            await fetch(`${API_BASE_URL}/projects/${saved.id || id}/contacts`, {
+              method:'POST', headers:{ 'Content-Type':'application/json', ...projectService.headers('editor') }, body:JSON.stringify(c)
+            })
+          }
+        }
+        if (Array.isArray(results)) {
+          for (const r of results) {
+            if (!r || !r.resultado) continue
+            await fetch(`${API_BASE_URL}/projects/${saved.id || id}/results`, {
+              method:'POST', headers:{ 'Content-Type':'application/json', ...projectService.headers('editor') }, body:JSON.stringify(r)
+            })
+          }
+        }
+        if (Array.isArray(awards)) {
+          for (const a of awards) {
+            if (!a || !a.ano || !a.categoria) continue
+            await fetch(`${API_BASE_URL}/projects/${saved.id || id}/awards`, {
+              method:'POST', headers:{ 'Content-Type':'application/json', ...projectService.headers('editor') }, body:JSON.stringify(a)
+            })
+          }
+        }
         if (coverFile) { await uploadProjectCover(saved.id || id, coverFile) }
         if (attachmentFiles && attachmentFiles.length) {
           for (const f of attachmentFiles) { await uploadProjectAttachment(saved.id || id, f) }
         }
-        toast.success('Projeto atualizado com sucesso!')
+        toast.success('Iniciativa atualizada com sucesso!')
       } else {
         const created = await createProject(formData)
         if (Array.isArray(members)) {
@@ -194,11 +234,35 @@ const ProjectForm = () => {
             })
           }
         }
+        if (Array.isArray(contacts)) {
+          for (const c of contacts) {
+            if (!c || !c.nome || !c.email) continue
+            await fetch(`${API_BASE_URL}/projects/${created.id}/contacts`, {
+              method:'POST', headers:{ 'Content-Type':'application/json', ...projectService.headers('editor') }, body:JSON.stringify(c)
+            })
+          }
+        }
+        if (Array.isArray(results)) {
+          for (const r of results) {
+            if (!r || !r.resultado) continue
+            await fetch(`${API_BASE_URL}/projects/${created.id}/results`, {
+              method:'POST', headers:{ 'Content-Type':'application/json', ...projectService.headers('editor') }, body:JSON.stringify(r)
+            })
+          }
+        }
+        if (Array.isArray(awards)) {
+          for (const a of awards) {
+            if (!a || !a.ano || !a.categoria) continue
+            await fetch(`${API_BASE_URL}/projects/${created.id}/awards`, {
+              method:'POST', headers:{ 'Content-Type':'application/json', ...projectService.headers('editor') }, body:JSON.stringify(a)
+            })
+          }
+        }
         if (coverFile) { await uploadProjectCover(created.id, coverFile) }
         if (attachmentFiles && attachmentFiles.length) {
           for (const f of attachmentFiles) { await uploadProjectAttachment(created.id, f) }
         }
-        toast.success('Projeto criado com sucesso!')
+        toast.success('Iniciativa criada com sucesso!')
       }
       navigate('/projects')
     } catch (err) {
@@ -215,7 +279,7 @@ const ProjectForm = () => {
       <Alert severity="error">{error}</Alert>
       <Box sx={{ mt: 2 }}>
         <Button variant="outlined" startIcon={<ArrowBack />} onClick={() => navigate('/projects')}>
-            Voltar para Projetos
+            Voltar para Iniciativas
           </Button>
         </Box>
       </Container>
@@ -224,7 +288,7 @@ const ProjectForm = () => {
   return (
     <Container maxWidth={false} sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>{isEdit ? '✏️ Editar Projeto' : '➕ Novo Projeto'}</Typography>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>{isEdit ? '✏️ Editar Iniciativa' : '➕ Nova Iniciativa'}</Typography>
         <Button variant="outlined" startIcon={<ArrowBack />} onClick={() => navigate('/projects')} disabled={saving}>
           Voltar
         </Button>
@@ -263,6 +327,22 @@ const ProjectForm = () => {
             </Grid>
 
             <Grid item xs={12} md={4}>
+              <TextField fullWidth label="Unidade Gestora" value={formData.unidade_gestora} onChange={handleChange('unidade_gestora')} {...limitProps('unidade_gestora')} />
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Selo</InputLabel>
+                <Select value={formData.selo} label="Selo" onChange={handleChange('selo')}>
+                  <MenuItem value="">Nenhum</MenuItem>
+                  {seloOptions.map((s)=> (
+                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
               <FormControl fullWidth>
                 <InputLabel>Fase de Implementação</InputLabel>
                 <Select value={formData.fase_de_implementacao} onChange={handleChange('fase_de_implementacao')} label="Fase de Implementação">
@@ -288,20 +368,37 @@ const ProjectForm = () => {
             <Grid item xs={12} md={6}><TextField fullWidth label="Estimativa de Recursos" value={formData.estimativa_de_recursos} onChange={handleChange('estimativa_de_recursos')} {...limitProps('estimativa_de_recursos')} /></Grid>
             <Grid item xs={12} md={6}><TextField fullWidth label="Público Impactado" value={formData.publico_impactado} onChange={handleChange('publico_impactado')} {...limitProps('publico_impactado')} /></Grid>
             <Grid item xs={12} md={6}><TextField fullWidth label="Órgãos Envolvidos" value={formData.orgaos_envolvidos} onChange={handleChange('orgaos_envolvidos')} {...limitProps('orgaos_envolvidos')} /></Grid>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Contatos" value={formData.contatos} onChange={handleChange('contatos')} {...limitProps('contatos')} /></Grid>
+            {/* Contatos migraram para seção 3 */}
+            {/* Seção: Desafios (campos curtos ~100, 3 por linha) */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 2 }}>Desafios</Typography>
+              <Divider sx={{ mb: 2, borderColor: 'rgba(0,0,0,0.06)' }} />
+            </Grid>
             <Grid item xs={12} md={4}><TextField fullWidth label="Desafio 1" value={formData.desafio_1} onChange={handleChange('desafio_1')} {...limitProps('desafio_1')} /></Grid>
             <Grid item xs={12} md={4}><TextField fullWidth label="Desafio 2" value={formData.desafio_2} onChange={handleChange('desafio_2')} {...limitProps('desafio_2')} /></Grid>
             <Grid item xs={12} md={4}><TextField fullWidth label="Desafio 3" value={formData.desafio_3} onChange={handleChange('desafio_3')} {...limitProps('desafio_3')} /></Grid>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Resolutividade" value={formData.resolutividade} onChange={handleChange('resolutividade')} {...limitProps('resolutividade')} /></Grid>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Inovação" value={formData.inovacao} onChange={handleChange('inovacao')} {...limitProps('inovacao')} /></Grid>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Transparência" value={formData.transparencia} onChange={handleChange('transparencia')} {...limitProps('transparencia')} /></Grid>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Proatividade" value={formData.proatividade} onChange={handleChange('proatividade')} {...limitProps('proatividade')} /></Grid>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Cooperação" value={formData.cooperacao} onChange={handleChange('cooperacao')} {...limitProps('cooperacao')} /></Grid>
+
+            {/* Seção: Justificativas (campos longos ~500, multilinha, largura total) */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 2 }}>Justificativas</Typography>
+              <Divider sx={{ mb: 2, borderColor: 'rgba(0,0,0,0.06)' }} />
+            </Grid>
+            <Grid item xs={12}><TextField fullWidth multiline rows={4} label="Resolutividade" value={formData.resolutividade} onChange={handleChange('resolutividade')} {...limitProps('resolutividade')} /></Grid>
+            <Grid item xs={12}><TextField fullWidth multiline rows={4} label="Inovação" value={formData.inovacao} onChange={handleChange('inovacao')} {...limitProps('inovacao')} /></Grid>
+            <Grid item xs={12}><TextField fullWidth multiline rows={4} label="Transparência" value={formData.transparencia} onChange={handleChange('transparencia')} {...limitProps('transparencia')} /></Grid>
+            <Grid item xs={12}><TextField fullWidth multiline rows={4} label="Proatividade" value={formData.proatividade} onChange={handleChange('proatividade')} {...limitProps('proatividade')} /></Grid>
+            <Grid item xs={12}><TextField fullWidth multiline rows={4} label="Cooperação" value={formData.cooperacao} onChange={handleChange('cooperacao')} {...limitProps('cooperacao')} /></Grid>
+
+            {/* Seção: Resultados (campos curtos ~100, 3 por linha) */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 2 }}>Resultados</Typography>
+              <Divider sx={{ mb: 2, borderColor: 'rgba(0,0,0,0.06)' }} />
+            </Grid>
             <Grid item xs={12} md={4}><TextField fullWidth label="Resultado 1" value={formData.resultado_1} onChange={handleChange('resultado_1')} {...limitProps('resultado_1')} /></Grid>
             <Grid item xs={12} md={4}><TextField fullWidth label="Resultado 2" value={formData.resultado_2} onChange={handleChange('resultado_2')} {...limitProps('resultado_2')} /></Grid>
             <Grid item xs={12} md={4}><TextField fullWidth label="Resultado 3" value={formData.resultado_3} onChange={handleChange('resultado_3')} {...limitProps('resultado_3')} /></Grid>
-            <Grid item xs={12}><TextField fullWidth label="Comprovação dos Resultados" value={formData.comprovacao_dos_resultados} onChange={handleChange('comprovacao_dos_resultados')} {...limitProps('comprovacao_dos_resultados')} /></Grid>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Categoria" value={formData.categoria} onChange={handleChange('categoria')} {...limitProps('categoria')} /></Grid>
+            {/* Comprovação dos resultados migraram para seção 4 */}
+            {/* Categoria removida. Usar Prêmio CNMP na visão do projeto */}
 
             {/* Capa da iniciativa */}
             <Grid item xs={12} md={6}>
@@ -323,23 +420,59 @@ const ProjectForm = () => {
               )}
             </Grid>
 
-            {/* Equipe do Projeto */}
+            {/* Equipe da Iniciativa */}
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold', mt: 4 }}>
-                👥 2. Equipe do Projeto
+                👥 2. Equipe da Iniciativa
               </Typography>
               <Divider sx={{ mb: 2, borderColor: 'rgba(0,0,0,0.08)' }} />
               <Stack spacing={2}>
-                {members.map((m, idx)=> (
-                  <Grid key={idx} container spacing={1} alignItems="center">
-                    <Grid item xs={12} md={4}><TextField fullWidth label="Nome" value={m.name} onChange={(e)=> setMembers(prev=> prev.map((x,i)=> i===idx? {...x, name:e.target.value} : x))} /></Grid>
-                    <Grid item xs={12} md={4}><TextField fullWidth label="Email" value={m.email} onChange={(e)=> setMembers(prev=> prev.map((x,i)=> i===idx? {...x, email:e.target.value} : x))} /></Grid>
-                    <Grid item xs={12} md={3}><TextField fullWidth label="Papel" value={m.role} onChange={(e)=> setMembers(prev=> prev.map((x,i)=> i===idx? {...x, role:e.target.value} : x))} /></Grid>
-                    <Grid item xs={12} md={1}><IconButton color="error" onClick={()=> setMembers(prev=> prev.filter((_,i)=> i!==idx))}><Delete/></IconButton></Grid>
+                {/* Renderiza apenas uma lista com o botão interno do componente */}
+                <TeamFields members={members} setMembers={setMembers} showDivider={false} size="medium" />
+              </Stack>
             </Grid>
+
+            {/* Contatos */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold', mt: 4 }}>
+                📞 3. Contatos
+              </Typography>
+              <Divider sx={{ mb: 2, borderColor: 'rgba(0,0,0,0.08)' }} />
+              <ContactsFields contacts={contacts} setContacts={setContacts} showDivider={false} size="medium" />
+            </Grid>
+
+            {/* Comprovação dos Resultados */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold', mt: 4 }}>
+                ✅ 4. Comprovação dos Resultados
+              </Typography>
+              <Divider sx={{ mb: 2, borderColor: 'rgba(0,0,0,0.08)' }} />
+              <ResultsFields results={results} setResults={setResults} showDivider={false} size="small" />
+            </Grid>
+
+            {/* Prêmio CNMP */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold', mt: 4 }}>
+                🏆 5. Prêmio CNMP
+              </Typography>
+              <Divider sx={{ mb: 2, borderColor: 'rgba(0,0,0,0.08)' }} />
+              <Stack spacing={2}>
+                {awards.map((a, idx)=> (
+                  <Grid key={idx} container spacing={1} alignItems="center">
+                    <Grid item xs={12} md={3}><TextField fullWidth label="Ano" value={a.ano} onChange={(e)=> setAwards(prev=> prev.map((x,i)=> i===idx? {...x, ano:e.target.value} : x))} /></Grid>
+                    <Grid item xs={12} md={5} sx={{ display:'flex', alignItems:'center' }}>
+                      <FormControl fullWidth>
+                        <InputLabel id={`award-category-label-${idx}`}>Categoria</InputLabel>
+                        <Select labelId={`award-category-label-${idx}`} id={`award-category-${idx}`} value={a.categoria} label="Categoria" onChange={(e)=> setAwards(prev=> prev.map((x,i)=> i===idx? {...x, categoria:e.target.value} : x))}>
+                          {premioCnmpCategorias.map((c)=> (<MenuItem key={c} value={c}>{c}</MenuItem>))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={1} sx={{ display:'flex', justifyContent:{ xs:'flex-start', md:'flex-end' } }}><IconButton color="error" onClick={()=> setAwards(prev=> prev.filter((_,i)=> i!==idx))}><Delete/></IconButton></Grid>
+                  </Grid>
                 ))}
                 <Box>
-                  <Button startIcon={<Add/>} onClick={()=> setMembers(prev=> [...prev, { name:'', email:'', role:'' }])}>Adicionar membro</Button>
+                  <Button startIcon={<Add/>} onClick={()=> setAwards(prev=> [...prev, { ano:'', categoria:'' }])}>Adicionar prêmio</Button>
                 </Box>
               </Stack>
             </Grid>
@@ -348,7 +481,7 @@ const ProjectForm = () => {
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 4 }}>
                 <Button variant="outlined" startIcon={<ArrowBack />} onClick={() => navigate('/projects')} disabled={saving}>Cancelar</Button>
                 <Button type="submit" variant="contained" startIcon={<Save />} disabled={saving} size="large">
-                  {saving ? 'Salvando...' : (isEdit ? 'Atualizar Projeto' : 'Criar Projeto')}
+                  {saving ? 'Salvando...' : (isEdit ? 'Atualizar Iniciativa' : 'Criar Iniciativa')}
                 </Button>
               </Box>
             </Grid>

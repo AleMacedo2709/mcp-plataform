@@ -24,7 +24,8 @@ import {
   InputLabel,
   Select,
   Tooltip,
-  Fab
+  Fab,
+  CardActionArea
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -37,6 +38,7 @@ import {
   FileDownload as DownloadIcon
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
+import CardMedia from '@mui/material/CardMedia';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { format } from 'date-fns';
@@ -64,14 +66,16 @@ const ProjectList = () => {
     ownerMe: false,
     tipo_iniciativa: '',
     classificacao: '',
-    fase: ''
+    fase: '',
+    unidade_gestora: '',
+    selo: ''
   });
   const [deleteDialog, setDeleteDialog] = useState({ open: false, project: null });
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
 
   // Opções para filtros
-  const tipoOptions = ['Boa Prática', 'Projeto', 'Programa'];
+  const tipoOptions = ['Boa Prática', 'Iniciativa', 'Programa'];
   const classificacaoOptions = ['Ação', 'Campanha', 'Ferramenta'];
   const faseOptions = ['Implementação parcial', 'Implementação integral'];
 
@@ -97,7 +101,16 @@ const ProjectList = () => {
         fase: p.fase_de_implementacao || p.fase_implementacao || p.fase,
         data_inicial_operacao: p.data_inicial_de_operacao || p.data_inicial_operacao
       }))
-      setProjects(mapped);
+      // opcional: buscar likes por projeto em paralelo (leve)
+      try {
+        const likesResults = await Promise.all(mapped.map(async (p)=> {
+          try { const res = await fetch(`${API_BASE_URL}/projects/${p.id}/likes`); const d = await res.json(); return { id:p.id, likes: d.likes||0 } } catch { return { id:p.id, likes:0 } }
+        }))
+        const idToLikes = Object.fromEntries(likesResults.map(x=> [x.id, x.likes]))
+        setProjects(mapped.map(p=> ({...p, likes: idToLikes[p.id] || 0})))
+      } catch {
+        setProjects(mapped)
+      }
       setTotal(response.total || 0);
       setError(null);
     } catch (err) {
@@ -157,6 +170,20 @@ const ProjectList = () => {
             ID: {params.row.id}
           </Typography>
         </Box>
+      )
+    },
+    {
+      field: 'unidade_gestora',
+      headerName: 'Unidade Gestora',
+      width: 180,
+      hide: false,
+    },
+    {
+      field: 'selo',
+      headerName: 'Selo',
+      width: 120,
+      renderCell: (params) => (
+        <Chip label={params.value || '-'} size="small" variant="outlined" />
       )
     },
     {
@@ -223,30 +250,14 @@ const ProjectList = () => {
         }
       }
     },
-    {
-      field: 'actions',
-      headerName: 'Ações',
-      width: 100,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <Box>
-          <Tooltip title="Mais opções">
-            <IconButton
-              size="small"
-              onClick={(e) => handleMenuClick(e, params.row)}
-            >
-              <MoreVertIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      )
-    }
+    // coluna de menu removida; clique na linha abre detalhes
   ];
 
   if (loading && projects.length === 0) {
     return <LoadingSpinner />;
   }
+
+  const asCards = true;
 
   return (
     <Box>
@@ -254,7 +265,7 @@ const ProjectList = () => {
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
           <Typography variant="h4" component="h1" gutterBottom sx={{ color: 'text.primary', fontWeight: 800 }}>
-            Projetos Cadastrados
+            Iniciativas Cadastradas
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             Gerencie todos os projetos do sistema
@@ -268,7 +279,7 @@ const ProjectList = () => {
             onClick={() => navigate('/projects/new')}
             sx={{ borderRadius: 2 }}
           >
-            Novo Projeto
+            Nova Iniciativa
           </Button>
         )}
       </Box>
@@ -347,10 +358,35 @@ const ProjectList = () => {
               </FormControl>
             </Grid>
 
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Unidade Gestora"
+                value={filters.unidade_gestora}
+                onChange={(e)=> setFilters(prev=> ({...prev, unidade_gestora: e.target.value}))}
+              />
+            </Grid>
+
+            <Grid item xs={6} sm={3} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Selo</InputLabel>
+                <Select
+                  value={filters.selo}
+                  label="Selo"
+                  onChange={(e) => setFilters(prev => ({ ...prev, selo: e.target.value }))}
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  <MenuItem value="PGJ">PGJ</MenuItem>
+                  <MenuItem value="CG Cidadã">CG Cidadã</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
             <Grid item xs={12} sm={3} md={2}>
               <Button fullWidth variant="contained" color="primary"
                 startIcon={<FilterIcon />}
-                onClick={() => { setSearch(''); setFilters({ tipo_iniciativa: '', classificacao: '', fase: '' }); }}
+                onClick={() => { setSearch(''); setFilters({ tipo_iniciativa: '', classificacao: '', fase: '', unidade_gestora:'', selo:'' }); }}
                 sx={{ fontWeight: 700 }}
               >Limpar</Button>
             </Grid>
@@ -365,51 +401,46 @@ const ProjectList = () => {
         </Alert>
       )}
 
-      {/* Data Grid */}
-      <Card sx={{ bgcolor: 'rgba(17,24,39,0.7)', border: '1px solid rgba(255,255,255,0.06)' }}>
-        <Box sx={{ height: 600, width: '100%' }}>
-          <DataGrid
-            rows={projects}
-            columns={columns}
-            pageSize={pageSize}
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-            page={page}
-            onPageChange={(newPage) => setPage(newPage)}
-            rowCount={total}
-            paginationMode="server"
-            loading={loading}
-            disableSelectionOnClick
-            autoHeight={isXs}
-            columnVisibilityModel={{
-              classificacao: !isSm,
-              data_inicial_operacao: !isSm,
-              created_at: !isSm
-            }}
-            localeText={{
-              // Tradução para português
-              noRowsLabel: 'Nenhum projeto encontrado',
-              footerRowSelected: (count) => `${count} projeto(s) selecionado(s)`,
-            }}
-            sx={{
-              border: 'none',
-              color: 'text.primary',
-              '& .MuiDataGrid-cell': { borderBottom: '1px solid rgba(255,255,255,0.06)' },
-              '& .MuiDataGrid-columnHeaders': {
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
-                color: 'text.secondary'
-              },
-              '& .MuiDataGrid-footerContainer': {
-                borderTop: '1px solid rgba(255,255,255,0.08)'
-              },
-              '& .MuiDataGrid-virtualScroller': {
-                overflowX: 'hidden'
-              }
-            }}
-          />
-        </Box>
-      </Card>
+      {/* Cards Grid */}
+      {asCards && (
+        <Grid container spacing={2}>
+          {projects.map((p)=> {
+            const likes = p.likes || p.total_likes || 0;
+            return (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={p.id}>
+                <Card sx={{ position:'relative' }}>
+                  {/* Badge de curtidas */}
+                  <Box sx={{ position:'absolute', top: 8, left: 8, bgcolor:'error.main', color:'#fff', px:1.2, py:0.3, borderRadius: 2, fontSize:12, fontWeight:700 }}>
+                    {likes} curtidas
+                  </Box>
+                  <CardActionArea onClick={()=> navigate(`/projects/${p.id}`)}>
+                    <CardMedia
+                      component="img"
+                      image={p.capa_da_iniciativa || '/logo.png'}
+                      alt={p.nome_da_iniciativa}
+                      sx={{ height: 140, objectFit:'contain', bgcolor:'#f5f7fb' }}
+                    />
+                    <CardContent>
+                      <Typography variant="overline" sx={{ color:'text.secondary' }}>Título:</Typography>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }} noWrap>
+                        {p.nome_da_iniciativa}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color:'text.secondary' }} noWrap>
+                        {p.unidade_gestora || '-'} {p.selo ? `• ${p.selo}` : ''}
+                      </Typography>
+                      <Box sx={{ mt: 1, display:'flex', gap: 0.5, flexWrap:'wrap' }}>
+                        {p.tipo_de_iniciativa && <Chip size="small" label={p.tipo_de_iniciativa} />}
+                        {p.classificacao && <Chip size="small" color="secondary" label={p.classificacao} />}
+                        {p.fase && <Chip size="small" color={getStatusColor(p.fase)} label={p.fase} />}
+                      </Box>
+                    </CardContent>
+                  </CardActionArea>
+                </Card>
+              </Grid>
+            )
+          })}
+        </Grid>
+      )}
 
       {/* Menu de Ações */}
       <Menu

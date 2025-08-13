@@ -1,4 +1,14 @@
 services:
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 3310 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
   db:
     image: postgres:16-alpine
     environment:
@@ -27,11 +37,16 @@ services:
       - PYTHONPATH=/app/services/mcp-persistence:/app:/app/packages
       - UPLOAD_DIR=/data/uploads
       - INCLUDE_INSTITUTIONAL_ROUTES=false
+      - AUTO_MIGRATE=true
+      - CLAMAV_HOST=clamav
+      - CLAMAV_PORT=3310
     ports:
       - "18000:8000"
     depends_on:
       db:
         condition: service_healthy
+      clamav:
+        condition: service_started
     volumes:
       - ./packages:/app/packages:ro
       - uploads:/data/uploads
@@ -69,6 +84,7 @@ services:
     environment:
       - PYTHONPATH=/app/services/mcp-chat:/app:/app/packages
       - RESOURCE_DIR=/data/resources
+      - USE_AUTH=false
     ports:
       - "18002:8002"
     depends_on:
@@ -87,9 +103,9 @@ services:
       - "5173:5173"
     environment:
       - REACT_APP_TEST_MODE=true
-      - REACT_APP_API_BASE_URL=http://localhost:18000
-      - REACT_APP_INGESTION_BASE_URL=http://localhost:18001
-      - REACT_APP_CHAT_BASE_URL=http://localhost:18002
+      - VITE_API_BASE_URL=http://localhost:18000
+      - VITE_INGESTION_BASE_URL=http://localhost:18001
+      - VITE_CHAT_BASE_URL=http://localhost:18002
     depends_on:
       - mcp-persistence
       - mcp-ingestion

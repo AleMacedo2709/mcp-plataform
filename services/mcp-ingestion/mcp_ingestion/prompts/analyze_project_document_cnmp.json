@@ -183,6 +183,51 @@
           "Categoria D - Ministério Público Militar",
           "Categoria E - Ministérios Públicos do Distrito Federal e Territórios"
         ]
+      },
+      "equipe": {
+        "type": "array",
+        "description": "Lista estruturada da equipe da iniciativa (quando identificável no documento).",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "maxLength": 200 },
+            "email": { "type": "string", "maxLength": 200 },
+            "role": { "type": "string", "maxLength": 200 }
+          }
+        }
+      },
+      "contatos_list": {
+        "type": "array",
+        "description": "Lista estruturada de contatos (nome e email).",
+        "items": {
+          "type": "object",
+          "properties": {
+            "nome": { "type": "string", "maxLength": 200 },
+            "email": { "type": "string", "maxLength": 200 }
+          }
+        }
+      },
+      "resultados_estruturados": {
+        "type": "array",
+        "description": "Lista estruturada de comprovações de resultados (data opcional).",
+        "items": {
+          "type": "object",
+          "properties": {
+            "data_da_coleta": { "type": "string", "format": "date" },
+            "resultado": { "type": "string", "maxLength": 200 }
+          }
+        }
+      },
+      "premios_cnmp": {
+        "type": "array",
+        "description": "Lista de prêmios CNMP mencionados (se houver).",
+        "items": {
+          "type": "object",
+          "properties": {
+            "ano": { "type": "string", "maxLength": 10 },
+            "categoria": { "type": "string", "maxLength": 200 }
+          }
+        }
       }
     },
     "required": [

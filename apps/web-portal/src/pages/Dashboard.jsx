@@ -57,7 +57,7 @@ const Dashboard = () => {
 
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error);
-      toast.error('Erro ao carregar dados do dashboard');
+      toast.error('Não foi possível carregar o dashboard. Tentando novamente...');
     } finally {
       setLoading(false);
     }
@@ -98,7 +98,7 @@ const Dashboard = () => {
           
           {hasPermission('user') && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/projects/new')}>
-              Novo Projeto
+              Nova Iniciativa
             </Button>
           )}
         </Box>
@@ -112,7 +112,7 @@ const Dashboard = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
                   <Typography color="textSecondary" gutterBottom variant="overline">
-                    Total de Projetos
+                    Total de Iniciativas
                   </Typography>
                   <Typography variant="h4" component="h2">
                     {stats?.totalProjects || 0}
@@ -186,13 +186,13 @@ const Dashboard = () => {
           </Card>
         </Grid>
 
-        {/* Projetos Recentes */}
+        {/* Iniciativas Recentes */}
         <Grid item xs={12} md={12}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">
-                  Projetos Recentes
+                  Iniciativas Recentes
                 </Typography>
                 <Button
                   size="small"
@@ -266,7 +266,7 @@ const Dashboard = () => {
                   onClick={() => navigate('/projects/new')}
                   disabled={!hasPermission('user')}
                 >
-                  Criar Projeto
+                   Criar Iniciativa
                 </Button>
                 
                 <Button variant="outlined" startIcon={<UploadIcon />} onClick={() => navigate('/projects/smart-create')}>
@@ -274,7 +274,7 @@ const Dashboard = () => {
                 </Button>
                 
                 <Button variant="outlined" startIcon={<FolderIcon />} onClick={() => navigate('/projects')}>
-                  Ver Todos os Projetos
+                   Ver Todas as Iniciativas
                 </Button>
               </Box>
             </CardContent>

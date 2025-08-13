@@ -3,7 +3,7 @@ import { Box, Typography, Stack, TextField, Button, IconButton, Paper } from '@m
 import { Delete } from '@mui/icons-material'
 import { API_BASE_URL, projectService } from '../../services/apiService'
 
-export default function MembersTab({ projectId }) {
+export default function MembersTab({ projectId, canEdit = true }) {
   const [rows, setRows] = useState([])
   const [form, setForm] = useState({ name: '', email: '', role: '' })
 
@@ -25,8 +25,8 @@ export default function MembersTab({ projectId }) {
 
   return (
     <Paper variant='outlined' sx={{ p:2 }}>
-      <Typography variant='h6' sx={{ mb: 2, fontWeight: 700 }}>Equipe do Projeto</Typography>
-      <Stack direction='row' spacing={1} sx={{ mb:2 }}>
+      <Typography variant='h6' sx={{ mb: 2, fontWeight: 700 }}>Equipe da Iniciativa</Typography>
+      <Stack direction='row' spacing={1} sx={{ mb:2, display: canEdit ? 'flex' : 'none' }}>
         <TextField size='small' label='Nome' value={form.name} onChange={(e)=>setForm({...form, name:e.target.value})} />
         <TextField size='small' label='Email' value={form.email} onChange={(e)=>setForm({...form, email:e.target.value})} />
         <TextField size='small' label='Papel' value={form.role} onChange={(e)=>setForm({...form, role:e.target.value})} />
@@ -39,7 +39,7 @@ export default function MembersTab({ projectId }) {
               <Typography variant='subtitle2'>{m.name}</Typography>
               <Typography variant='caption' color='text.secondary'>{m.email} · {m.role||'—'}</Typography>
             </Box>
-            <IconButton color='error' size='small' onClick={()=>remove(m.id)}><Delete/></IconButton>
+            {canEdit && <IconButton color='error' size='small' onClick={()=>remove(m.id)}><Delete/></IconButton>}
           </Stack>
         ))}
         {rows.length===0 && <Typography variant='body2' color='text.secondary'>Nenhum membro adicionado</Typography>}

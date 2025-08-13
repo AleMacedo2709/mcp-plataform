@@ -5,7 +5,10 @@ import { Card, CardContent, CardActions } from '@mui/material'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 
 function MessageView({ msg }) {
-  if (msg.role !== 'assistant') return <Box sx={{ whiteSpace:'pre-wrap' }}><b>{msg.role}:</b> {msg.content}</Box>
+  if (msg.role !== 'assistant') {
+    const label = msg.role === 'system' ? 'Agente IA - MPSP' : msg.role
+    return <Box sx={{ whiteSpace:'pre-wrap' }}><b>{label}:</b> {msg.content}</Box>
+  }
   let payload = {}
   try { payload = JSON.parse(msg.content) } catch {}
   if (payload?.results || payload?.hits || payload?.data) {
@@ -13,7 +16,7 @@ function MessageView({ msg }) {
       <Stack spacing={2}>
         {payload.results && (
           <>
-            <Typography variant="subtitle1">Projetos encontrados</Typography>
+            <Typography variant="subtitle1">Iniciativas encontradas</Typography>
             {payload.results.map((r, idx) => (
               <Card key={idx} variant="outlined">
                 <CardContent>
@@ -44,7 +47,7 @@ function MessageView({ msg }) {
         {payload.data && (
           <Card variant="outlined">
             <CardContent>
-              <Typography variant="h6">Projeto</Typography>
+              <Typography variant="h6">Iniciativa</Typography>
               <Typography variant="subtitle2">{payload.data.nome_da_iniciativa}</Typography>
               <Typography variant="body2" sx={{ mt:1 }}>{payload.data.descricao}</Typography>
             </CardContent>
@@ -80,10 +83,12 @@ function PrefillButton({ suggested }) {
 }
 
 import { createChatSocket, chatAsk } from '../services/chatService'
+import { useAuth } from '../hooks/useAuth'
 
 export default function Chat() {
+  const { user } = useAuth()
   const [messages, setMessages] = useState([
-    { role: 'system', content: 'Bem-vindo! Pergunte sobre projetos, campos do CNMP ou recursos.' }
+    { role: 'system', content: 'Bem-vindo! Pergunte sobre iniciativas MPSP, e legislação interna e CNMP sobre o tema.' }
   ])
   const [input, setInput] = useState('')
   const [chips, setChips] = useState([])
@@ -92,7 +97,8 @@ export default function Chat() {
   const [wsReady, setWsReady] = useState(false)
 
   useEffect(() => {
-    const ws = createChatSocket()
+    const token = user?.token || ''
+    const ws = createChatSocket(token)
     wsRef.current = ws
     ws.onopen = () => setWsReady(true)
     ws.onclose = () => setWsReady(false)
@@ -103,7 +109,11 @@ export default function Chat() {
         if (data.type === 'answer') {
           const content = JSON.stringify(data.payload, null, 2); setMessages((prev) => [...prev, { role: 'assistant', content }]); setLastAssistant(content)
         } else if (data.type === 'welcome') {
-          setMessages((prev) => [...prev, { role: 'system', content: data.message }])
+          const welcome = 'Bem-vindo! Pergunte sobre iniciativas MPSP, e legislação interna e CNMP sobre o tema.'
+          setMessages((prev) => {
+            if (prev.some(m => m.role === 'system')) return prev
+            return [...prev, { role: 'system', content: welcome }]
+          })
         }
       } catch (e) { /* ignore */ }
     }
@@ -131,7 +141,7 @@ export default function Chat() {
   }
 
   return (
-    <Box>
+    <Box sx={{ width: '100%' }}>
       <Typography variant="h5" sx={{ mb: 2, fontWeight: 800 }}>Chat (MCP)</Typography>
       <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap:'wrap', alignItems:'center' }}>
         {['projeto','resource','documento','buscar'].map((t)=>(
@@ -145,7 +155,7 @@ export default function Chat() {
           const a = document.createElement('a'); a.href=url; a.download='chat-resposta.json'; a.click(); URL.revokeObjectURL(url);
         }}>Exportar resposta</Button>
       </Stack>
-      <Paper variant="outlined" sx={{ p: { xs: 1.5, md: 2 }, height: { xs: 360, md: 480 }, overflowY: 'auto', mb: 2 }}>
+      <Paper variant="outlined" sx={{ p: { xs: 1.5, md: 2 }, height: { xs: 360, md: 480 }, overflowY: 'auto', mb: 2, width: '100%' }}>
         <Stack spacing={1}>
           {messages.map((m, i) => (
             <Box key={i}>

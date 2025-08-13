@@ -37,8 +37,8 @@ export default function MyProjects() {
   return (
     <Box>
       <Stack direction='row' justifyContent='space-between' alignItems='center' sx={{ mb: 2 }}>
-        <Typography variant='h5' sx={{ fontWeight: 800 }}>Meus Projetos</Typography>
-        <Button variant='contained' onClick={()=>navigate('/projects/new')}>Novo Projeto</Button>
+        <Typography variant='h5' sx={{ fontWeight: 800 }}>Minhas Iniciativas</Typography>
+        <Button variant='contained' onClick={()=>navigate('/projects/new')}>Nova Iniciativa</Button>
       </Stack>
       {loading? <Typography>Carregando…</Typography> : (
         <Stack spacing={1}>
@@ -60,7 +60,7 @@ export default function MyProjects() {
               </CardContent>
             </Card>
           ))}
-          {(!rows || rows.length===0) && <Typography className='text-muted'>Nenhum projeto encontrado</Typography>}
+          {(!rows || rows.length===0) && <Typography className='text-muted'>Nenhuma iniciativa encontrada</Typography>}
         </Stack>
       )}
     </Box>

@@ -17,23 +17,26 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Divider
+  Divider,
+  Stack,
+  IconButton
 } from '@mui/material';
 import {
   CloudUpload,
   AutoAwesome,
   Edit,
   Save,
-  ArrowBack
+  ArrowBack,
+  Add,
+  Delete
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 
-import { uploadDocument, createProject, uploadProjectAttachment } from '../services/apiService';
-import { tipoOptions as TIPOS_INICIATIVA, classificacaoOptions as CLASSIFICACOES, faseOptions as FASES_IMPLEMENTACAO } from '../constants/formOptions';
-// Ajuste temporário: categorias/objetivos e helpers não existem no formOptions.js atual
-const CATEGORIAS = ['Categoria 1','Categoria 2','Categoria 3']
-const OBJETIVOS_ESTRATEGICOS = []
-const helpers = { getIconeTipo: () => null }
+import { uploadDocument, createProject, uploadProjectAttachment, API_BASE_URL, projectService } from '../services/apiService';
+import { tipoOptions as TIPOS_INICIATIVA, classificacaoOptions as CLASSIFICACOES, faseOptions as FASES_IMPLEMENTACAO, papelEquipeOptions as PAPEL_EQUIPE, CATEGORIAS, OBJETIVOS_ESTRATEGICOS, helpers } from '../constants/formOptions';
+import TeamFields from '../components/TeamFields'
+import ContactsFields from '../components/ContactsFields'
+import ResultsFields from '../components/ResultsFields'
 
 const SmartProjectCreator = () => {
   const navigate = useNavigate();
@@ -76,6 +79,9 @@ const SmartProjectCreator = () => {
     categoria: ''
   });
   const [attachmentFiles, setAttachmentFiles] = useState([]);
+  const [members, setMembers] = useState([{ name:'', email:'', role:'' }]);
+  const [contacts, setContacts] = useState([{ nome:'', email:'' }]);
+  const [results, setResults] = useState([{ data_da_coleta:'', resultado:'' }]);
 
   const steps = [
     'Upload do Documento',
@@ -152,6 +158,54 @@ const SmartProjectCreator = () => {
           capa_iniciativa: null,
           categoria: analysis.categoria || ''
         });
+
+        // Pré-preencher listas dinâmicas quando possível
+        // 1) Contatos: preferir lista estruturada "contatos_list"; senão, extrair de string
+        if (Array.isArray(analysis.contatos_list) && analysis.contatos_list.length) {
+          const parsed = analysis.contatos_list
+            .map(c => ({ nome: (c?.nome||'').trim(), email: (c?.email||'').trim() }))
+            .filter(c => c.nome || c.email)
+          if (parsed.length) setContacts(parsed)
+        } else if (analysis.contatos && typeof analysis.contatos === 'string') {
+          const text = analysis.contatos
+          const parts = text.split(/\n|;|,|\|/).map(p => p.trim()).filter(Boolean)
+          const emailRegex = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
+          const parsed = []
+          for (const p of parts) {
+            const emailMatch = p.match(emailRegex)
+            if (emailMatch) {
+              const email = emailMatch[0]
+              const nome = p.replace(email, '').replace(/[<>()-]/g, '').replace(/\s{2,}/g, ' ').trim() || email
+              parsed.push({ nome, email })
+            }
+          }
+          if (parsed.length) setContacts(parsed)
+        }
+
+        // 2) Equipe: se vier estruturado
+        if (Array.isArray(analysis.equipe) && analysis.equipe.length) {
+          const parsedMembers = analysis.equipe
+            .map(m => ({ name: (m?.name||'').trim(), email: (m?.email||'').trim(), role: (m?.role||'').trim() }))
+            .filter(m => m.name || m.email || m.role)
+          if (parsedMembers.length) setMembers(parsedMembers)
+        }
+
+        // 3) Comprovação dos Resultados: preferir lista estruturada, senão usar os 3 resultados como base (sem data)
+        if (Array.isArray(analysis.resultados_estruturados) && analysis.resultados_estruturados.length) {
+          const parsedResults = analysis.resultados_estruturados
+            .map(r => ({ data_da_coleta: (r?.data_da_coleta||'').trim(), resultado: (r?.resultado||'').trim() }))
+            .filter(r => r.resultado)
+          if (parsedResults.length) setResults(parsedResults)
+        } else {
+          const resultadosList = []
+          const r1 = analysis.resultado_1 || analysis.resultados?.[0]
+          const r2 = analysis.resultado_2 || analysis.resultados?.[1]
+          const r3 = analysis.resultado_3 || analysis.resultados?.[2]
+          if (r1) resultadosList.push({ data_da_coleta: '', resultado: r1 })
+          if (r2) resultadosList.push({ data_da_coleta: '', resultado: r2 })
+          if (r3) resultadosList.push({ data_da_coleta: '', resultado: r3 })
+          if (resultadosList.length) setResults(resultadosList)
+        }
         
         setActiveStep(2);
         toast.success('✅ Documento analisado! Dados extraídos automaticamente.');
@@ -194,8 +248,33 @@ const SmartProjectCreator = () => {
             try { await uploadProjectAttachment(createdId, f); } catch (e) { /* silencioso */ }
           }
         }
+        // Enviar equipe, contatos e comprovação de resultados
+        if (createdId && Array.isArray(members)) {
+          for (const m of members) {
+            if (!m || !m.name || !m.email) continue
+            try {
+              await fetch(`${API_BASE_URL}/projects/${createdId}/members`, { method:'POST', headers:{ 'Content-Type':'application/json', ...projectService.headers('editor') }, body: JSON.stringify(m) })
+            } catch {}
+          }
+        }
+        if (createdId && Array.isArray(contacts)) {
+          for (const c of contacts) {
+            if (!c || !c.nome || !c.email) continue
+            try {
+              await fetch(`${API_BASE_URL}/projects/${createdId}/contacts`, { method:'POST', headers:{ 'Content-Type':'application/json', ...projectService.headers('editor') }, body: JSON.stringify(c) })
+            } catch {}
+          }
+        }
+        if (createdId && Array.isArray(results)) {
+          for (const r of results) {
+            if (!r || !r.resultado) continue
+            try {
+              await fetch(`${API_BASE_URL}/projects/${createdId}/results`, { method:'POST', headers:{ 'Content-Type':'application/json', ...projectService.headers('editor') }, body: JSON.stringify(r) })
+            } catch {}
+          }
+        }
         setActiveStep(3);
-        toast.success('🎉 Projeto criado com sucesso!');
+        toast.success('🎉 Iniciativa criada com sucesso!');
         
         // Redirecionar após 2 segundos
         setTimeout(() => {
@@ -215,7 +294,7 @@ const SmartProjectCreator = () => {
       {/* Header */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap:'wrap', gap:1 }}>
         <Typography variant="h4" component="h1">
-          🤖 Criação Inteligente de Projeto
+          🤖 Criação Inteligente de Iniciativa
         </Typography>
         <Button
           variant="outlined"
@@ -246,7 +325,7 @@ const SmartProjectCreator = () => {
               Upload do Documento
             </Typography>
             <Typography variant="body1" color="text.secondary" paragraph>
-              Envie um documento (PDF, DOCX ou TXT) e nossa IA extrairá automaticamente os dados do projeto.
+              Envie um documento (PDF, DOCX ou TXT) e nossa IA extrairá automaticamente os dados da iniciativa.
             </Typography>
             
             <input
@@ -288,7 +367,7 @@ const SmartProjectCreator = () => {
             </Typography>
             <LinearProgress sx={{ mb: 2 }} />
             <Typography variant="body2" color="text.secondary">
-              Processando documento e extraindo informações do projeto...
+              Processando documento e extraindo informações da iniciativa...
             </Typography>
           </Box>
         </Paper>
@@ -300,7 +379,7 @@ const SmartProjectCreator = () => {
           <Box sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
             <Edit sx={{ mr: 1 }} />
             <Typography variant="h5">
-              Editar Dados do Projeto
+              Editar Dados da Iniciativa
             </Typography>
           </Box>
 
@@ -504,7 +583,7 @@ const SmartProjectCreator = () => {
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={12}>
               <TextField
                 fullWidth
                 multiline
@@ -514,19 +593,6 @@ const SmartProjectCreator = () => {
                 onChange={(e) => handleInputChange('orgaos_envolvidos', e.target.value)}
                 inputProps={{ maxLength: 300 }}
                 helperText="Órgãos parceiros ou colaboradores (máx. 300 caracteres)"
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                label="Contatos"
-                value={projectData.contatos}
-                onChange={(e) => handleInputChange('contatos', e.target.value)}
-                inputProps={{ maxLength: 300 }}
-                helperText="Nome e e-mail dos responsáveis (máx. 300 caracteres)"
               />
             </Grid>
 
@@ -685,7 +751,16 @@ const SmartProjectCreator = () => {
               />
             </Grid>
 
-            {/* SEÇÃO 7: ANEXOS (Preparado para futura implementação) */}
+            {/* SEÇÃO 7: EQUIPE DA INICIATIVA */}
+            <Grid item xs={12}><TeamFields members={members} setMembers={setMembers} /></Grid>
+
+            {/* SEÇÃO 8: CONTATOS */}
+            <Grid item xs={12}><ContactsFields contacts={contacts} setContacts={setContacts} title="📞 8. Contatos" /></Grid>
+
+            {/* SEÇÃO 9: COMPROVAÇÃO DOS RESULTADOS */}
+            <Grid item xs={12}><ResultsFields results={results} setResults={setResults} title="✅ 9. Comprovação dos Resultados" /></Grid>
+
+            {/* SEÇÃO 10: ANEXOS */}
             <Grid item xs={12}>
               <Divider sx={{ my: 2 }} />
               <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold' }}>
@@ -734,7 +809,7 @@ const SmartProjectCreator = () => {
               onClick={handleSaveProject}
               disabled={saving || !projectData.nome_iniciativa.trim()}
             >
-              {saving ? 'Salvando...' : 'Salvar Projeto'}
+              {saving ? 'Salvando...' : 'Salvar Iniciativa'}
             </Button>
           </Box>
         </Paper>
@@ -746,13 +821,13 @@ const SmartProjectCreator = () => {
           <Box sx={{ textAlign: 'center' }}>
             <Save sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
             <Typography variant="h5" gutterBottom color="success.main">
-              🎉 Projeto Criado com Sucesso!
+              🎉 Iniciativa criada com sucesso!
             </Typography>
             <Typography variant="body1" color="text.secondary" paragraph>
-              O projeto "{projectData.nome_iniciativa}" foi salvo na base de dados.
+              A iniciativa "{projectData.nome_iniciativa}" foi salva na base de dados.
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Redirecionando para a lista de projetos...
+              Redirecionando para a lista de iniciativas...
             </Typography>
           </Box>
         </Paper>

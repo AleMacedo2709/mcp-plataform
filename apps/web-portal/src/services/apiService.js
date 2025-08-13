@@ -1,7 +1,9 @@
 import axios from 'axios'
 
-export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:18000'
-export const INGESTION_BASE_URL = process.env.REACT_APP_INGESTION_BASE_URL || 'http://localhost:18001'
+const isProd = import.meta?.env?.MODE === 'production'
+// Padronizar VITE_* (fallback apenas em dev)
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || (!isProd && process.env.REACT_APP_API_BASE_URL) || 'http://localhost:18000')
+export const INGESTION_BASE_URL = (import.meta.env.VITE_INGESTION_BASE_URL || (!isProd && process.env.REACT_APP_INGESTION_BASE_URL) || 'http://localhost:18001')
 
 // ---- Upload & IA ----
 export async function uploadDocument(file, analysisType = 'analyze_project_document_cnmp') {
@@ -83,8 +85,16 @@ export async function listProjectAttachments(projectId) {
 }
 
 export const reportService = {
-  async dashboard() {
-    const res = await axios.get(`${API_BASE_URL}/reports/dashboard`, { headers: { 'x-origin': 'web-portal' } })
-    return res.data
+  async dashboard(retries = 2) {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/reports/dashboard`, { headers: { 'x-origin': 'web-portal' } })
+      return res.data
+    } catch (e) {
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 300 * (3 - retries)))
+        return this.dashboard(retries - 1)
+      }
+      throw e
+    }
   }
 }

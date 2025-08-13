@@ -10,12 +10,58 @@ from ...schemas import (
     ProjectOut,
     ProjectMemberCreate,
     ProjectMemberUpdate,
+    ProjectActionCreate,
+    ProjectActionUpdate,
+    ProjectContactCreate,
+    ProjectContactUpdate,
+    ProjectResultProofCreate,
+    ProjectResultProofUpdate,
+    ProjectCnmpAwardCreate,
+    ProjectCnmpAwardUpdate,
 )
 from ...security.deps import require_roles, get_current_user
 from packages.institutional.tools.audit import send_audit
 from typing import Optional
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])  # compat
+
+
+def _scan_file_for_malware(path: str) -> bool:
+    """Retorna True se o arquivo for seguro. Usa clamd se disponível; fallback para clamscan; caso indisponível, permite (fail-open)."""
+    try:
+        import os
+        host = os.getenv('CLAMAV_HOST', 'clamav')
+        port = int(os.getenv('CLAMAV_PORT', '3310'))
+        try:
+            import clamd
+            cd = clamd.ClamdNetworkSocket(host=host, port=port)
+            try:
+                cd.ping()
+            except Exception:
+                cd = None
+            if cd is not None:
+                res = cd.scan(path)
+                # {'/path': ('FOUND','MalwareName')} ou ('OK', None)
+                status = list(res.values())[0][0] if isinstance(res, dict) and res else 'OK'
+                return status == 'OK'
+        except Exception:
+            pass
+        # Fallback para clamscan
+        try:
+            import subprocess
+            r = subprocess.run(['clamscan', '--no-summary', path], capture_output=True, text=True)
+            if r.returncode == 0:
+                return True
+            # returncode 1 = encontrado malware; 2 = erro
+            return False
+        except Exception:
+            # Se não houver scanner disponível, fail-open (registro via log poderia ser adicionado)
+            return True
+    except Exception:
+        return True
 log = logging.getLogger('mcp_persistence')
 
 def get_db():
@@ -29,6 +75,7 @@ def get_db():
 init_db()
 
 @router.post("", response_model=ProjectOut)
+@limiter.limit("20/minute")
 async def create_project(request: Request, payload: ProjectCreate, db: Session = Depends(get_db), _: bool = Depends(require_roles('editor','admin'))):
     # Garantir owner vindo do header em DEV
     data = payload.model_dump()
@@ -63,14 +110,22 @@ def list_attachments(project_id: int):
         db.close()
 
 @router.post("/{project_id}/attachments")
-async def upload_attachment(project_id: int, request: Request, file: UploadFile = File(...)):
+@limiter.limit("30/minute")
+async def upload_attachment(project_id: int, request: Request, file: UploadFile = File(...), _: bool = Depends(require_roles('editor','admin'))):
     import os, uuid, shutil
+    import filetype
     uploads_root = os.getenv('UPLOAD_DIR', '/data/uploads')
     os.makedirs(uploads_root, exist_ok=True)
     # Estrutura: /data/uploads/{project_id}/
     target_dir = os.path.join(uploads_root, str(project_id))
     os.makedirs(target_dir, exist_ok=True)
-    ext = os.path.splitext(file.filename)[1]
+    # basic validation
+    allowed_ext = {'.pdf', '.png', '.jpg', '.jpeg', '.docx', '.txt'}
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed_ext:
+        raise HTTPException(status_code=400, detail='Extensão de arquivo não permitida')
+    # limit size ~ 50MB
+    max_bytes = 50 * 1024 * 1024
     safe_name = f"{uuid.uuid4().hex}{ext}"
     dest = os.path.join(target_dir, safe_name)
     # Write in chunks to support large files
@@ -80,6 +135,36 @@ async def upload_attachment(project_id: int, request: Request, file: UploadFile 
             if not chunk:
                 break
             f.write(chunk)
+            if f.tell() > max_bytes:
+                f.close(); os.remove(dest)
+                raise HTTPException(status_code=413, detail='Arquivo excede o tamanho máximo permitido (50MB)')
+    # validate magic/mime
+    try:
+        kind = filetype.guess(dest)
+        if not kind:
+            raise HTTPException(status_code=400, detail='Tipo de arquivo inválido')
+        mime = kind.mime.lower()
+        valid_mimes = {'application/pdf','image/png','image/jpeg','application/vnd.openxmlformats-officedocument.wordprocessingml.document','text/plain'}
+        if mime not in valid_mimes:
+            os.remove(dest)
+            raise HTTPException(status_code=400, detail='MIME não permitido')
+    except HTTPException:
+        raise
+    except Exception:
+        os.remove(dest)
+        raise HTTPException(status_code=400, detail='Falha ao validar arquivo')
+
+    # Anti-malware (opcional, fail-open se indisponível)
+    try:
+        safe = _scan_file_for_malware(dest)
+        if not safe:
+            os.remove(dest)
+            raise HTTPException(status_code=400, detail='Arquivo reprovado na varredura de malware')
+    except HTTPException:
+        raise
+    except Exception:
+        # se scanner falhar, manter upload mas poderíamos registrar
+        pass
     # Persist entry in DB (optional lightweight)
     try:
         from ...db.session import SessionLocal
@@ -136,13 +221,19 @@ def download_attachment(project_id: int, attachment_id: int):
 
 # --- Project Cover (Capa da iniciativa) ---
 @router.post("/{project_id}/cover")
-async def upload_project_cover(project_id: int, file: UploadFile = File(...)):
+async def upload_project_cover(project_id: int, file: UploadFile = File(...), _: bool = Depends(require_roles('editor','admin'))):
     import os, uuid
+    import filetype
     uploads_root = os.getenv('UPLOAD_DIR', '/data/uploads')
     os.makedirs(uploads_root, exist_ok=True)
     target_dir = os.path.join(uploads_root, str(project_id), 'cover')
     os.makedirs(target_dir, exist_ok=True)
-    ext = os.path.splitext(file.filename)[1]
+    # only images for cover
+    allowed_ext = {'.png', '.jpg', '.jpeg'}
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed_ext:
+        raise HTTPException(status_code=400, detail='Capa deve ser imagem (png/jpg/jpeg)')
+    max_bytes = 10 * 1024 * 1024
     safe_name = f"{uuid.uuid4().hex}{ext}"
     dest = os.path.join(target_dir, safe_name)
     with open(dest, 'wb') as f:
@@ -151,6 +242,30 @@ async def upload_project_cover(project_id: int, file: UploadFile = File(...)):
             if not chunk:
                 break
             f.write(chunk)
+            if f.tell() > max_bytes:
+                f.close(); os.remove(dest)
+                raise HTTPException(status_code=413, detail='Capa excede o tamanho máximo permitido (10MB)')
+    try:
+        kind = filetype.guess(dest)
+        if not kind or kind.mime.lower() not in {'image/png','image/jpeg'}:
+            os.remove(dest)
+            raise HTTPException(status_code=400, detail='Capa deve ser imagem válida (png/jpg)')
+    except HTTPException:
+        raise
+    except Exception:
+        os.remove(dest)
+        raise HTTPException(status_code=400, detail='Falha ao validar arquivo')
+
+    # Anti-malware (opcional)
+    try:
+        safe = _scan_file_for_malware(dest)
+        if not safe:
+            os.remove(dest)
+            raise HTTPException(status_code=400, detail='Imagem reprovada na varredura de malware')
+    except HTTPException:
+        raise
+    except Exception:
+        pass
 
     from ...db.session import SessionLocal
     from ...db.models import ProjectCover, Project
@@ -249,6 +364,195 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
     out.fase = project.fase_de_implementacao
     return out
 
+
+# --- Project Actions ---
+@router.get("/{project_id}/actions")
+def list_actions(project_id: int, db: Session = Depends(get_db)):
+    rows = crud.list_project_actions(db, project_id)
+    return [
+        {
+            "id": a.id,
+            "project_id": a.project_id,
+            "descricao": a.descricao,
+            "area_responsavel": a.area_responsavel,
+            "email_responsavel": a.email_responsavel,
+            "progresso": a.progresso,
+            "inicio_previsto": a.inicio_previsto,
+            "termino_previsto": a.termino_previsto,
+            "inicio_efetivo": a.inicio_efetivo,
+            "termino_efetivo": a.termino_efetivo,
+            "created_at": a.created_at,
+        }
+        for a in rows
+    ]
+
+@router.post("/{project_id}/actions")
+def add_action(project_id: int, payload: ProjectActionCreate, db: Session = Depends(get_db), request: Request = None, _: bool = Depends(require_roles('editor','admin'))):
+    # Permitir somente proprietário, admin ou membro da equipe
+    existing = crud.get_project(db, project_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail='Projeto não encontrado')
+    user = get_current_user(request)
+    roles = [r.strip() for r in (request.headers.get('x-role','') or '').split(',') if r.strip()]
+    if 'admin' not in roles and existing.owner != user:
+        from ...db.models import ProjectMember
+        is_member = db.query(ProjectMember).filter(ProjectMember.project_id == project_id, ProjectMember.email == user).first()
+        if not is_member:
+            raise HTTPException(status_code=403, detail='Somente o proprietário ou membros da equipe podem incluir ações')
+    if not payload.descricao:
+        raise HTTPException(status_code=400, detail='Descrição é obrigatória')
+    a = crud.add_project_action(db, project_id, payload)
+    return {"id": a.id}
+
+@router.put("/{project_id}/actions/{action_id}")
+def update_action(project_id: int, action_id: int, payload: ProjectActionUpdate, db: Session = Depends(get_db), request: Request = None, _: bool = Depends(require_roles('editor','admin'))):
+    existing = crud.get_project(db, project_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail='Projeto não encontrado')
+    user = get_current_user(request)
+    roles = [r.strip() for r in (request.headers.get('x-role','') or '').split(',') if r.strip()]
+    if 'admin' not in roles and existing.owner != user:
+        from ...db.models import ProjectMember
+        is_member = db.query(ProjectMember).filter(ProjectMember.project_id == project_id, ProjectMember.email == user).first()
+        if not is_member:
+            raise HTTPException(status_code=403, detail='Somente o proprietário ou membros da equipe podem editar ações')
+    a = crud.update_project_action(db, project_id, action_id, payload)
+    if not a:
+        raise HTTPException(status_code=404, detail='Ação não encontrada')
+    return {"status":"updated"}
+
+@router.delete("/{project_id}/actions/{action_id}")
+def delete_action(project_id: int, action_id: int, db: Session = Depends(get_db), request: Request = None, _: bool = Depends(require_roles('editor','admin'))):
+    existing = crud.get_project(db, project_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail='Projeto não encontrado')
+    user = get_current_user(request)
+    roles = [r.strip() for r in (request.headers.get('x-role','') or '').split(',') if r.strip()]
+    if 'admin' not in roles and existing.owner != user:
+        from ...db.models import ProjectMember
+        is_member = db.query(ProjectMember).filter(ProjectMember.project_id == project_id, ProjectMember.email == user).first()
+        if not is_member:
+            raise HTTPException(status_code=403, detail='Somente o proprietário ou membros da equipe podem excluir ações')
+    ok = crud.delete_project_action(db, project_id, action_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail='Ação não encontrada')
+    return {"status":"deleted"}
+
+
+# --- Project Contacts ---
+@router.get("/{project_id}/contacts")
+def list_contacts(project_id: int, db: Session = Depends(get_db)):
+    rows = crud.list_project_contacts(db, project_id)
+    return [{"id":c.id,"project_id":c.project_id,"nome":c.nome,"email":c.email,"created_at":c.created_at} for c in rows]
+
+@router.post("/{project_id}/contacts")
+def add_contact(project_id: int, payload: ProjectContactCreate, db: Session = Depends(get_db), request: Request = None, _: bool = Depends(require_roles('editor','admin'))):
+    if not payload.nome or not payload.email:
+        raise HTTPException(status_code=400, detail='Nome e email são obrigatórios')
+    # owner/admin/member
+    existing = crud.get_project(db, project_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail='Projeto não encontrado')
+    user = get_current_user(request)
+    roles = [r.strip() for r in (request.headers.get('x-role','') or '').split(',') if r.strip()]
+    if 'admin' not in roles and existing.owner != user:
+        from ...db.models import ProjectMember
+        is_member = db.query(ProjectMember).filter(ProjectMember.project_id == project_id, ProjectMember.email == user).first()
+        if not is_member:
+            raise HTTPException(status_code=403, detail='Somente o proprietário ou membros podem incluir contatos')
+    c = crud.add_project_contact(db, project_id, payload)
+    return {"id": c.id}
+
+@router.put("/{project_id}/contacts/{contact_id}")
+def update_contact(project_id: int, contact_id: int, payload: ProjectContactUpdate, db: Session = Depends(get_db)):
+    c = crud.update_project_contact(db, project_id, contact_id, payload)
+    if not c:
+        raise HTTPException(status_code=404, detail='Contato não encontrado')
+    return {"status": "updated"}
+
+@router.delete("/{project_id}/contacts/{contact_id}")
+def delete_contact(project_id: int, contact_id: int, db: Session = Depends(get_db)):
+    ok = crud.delete_project_contact(db, project_id, contact_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail='Contato não encontrado')
+    return {"status": "deleted"}
+
+
+# --- Project Result Proofs ---
+@router.get("/{project_id}/results")
+def list_results(project_id: int, db: Session = Depends(get_db)):
+    rows = crud.list_project_results(db, project_id)
+    return [{"id":r.id,"project_id":r.project_id,"data_da_coleta":r.data_da_coleta,"resultado":r.resultado,"created_at":r.created_at} for r in rows]
+
+@router.post("/{project_id}/results")
+def add_result(project_id: int, payload: ProjectResultProofCreate, db: Session = Depends(get_db), request: Request = None, _: bool = Depends(require_roles('editor','admin'))):
+    if not payload.resultado:
+        raise HTTPException(status_code=400, detail='Resultado é obrigatório')
+    existing = crud.get_project(db, project_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail='Projeto não encontrado')
+    user = get_current_user(request)
+    roles = [r.strip() for r in (request.headers.get('x-role','') or '').split(',') if r.strip()]
+    if 'admin' not in roles and existing.owner != user:
+        from ...db.models import ProjectMember
+        is_member = db.query(ProjectMember).filter(ProjectMember.project_id == project_id, ProjectMember.email == user).first()
+        if not is_member:
+            raise HTTPException(status_code=403, detail='Somente o proprietário ou membros podem incluir comprovações')
+    r = crud.add_project_result(db, project_id, payload)
+    return {"id": r.id}
+
+@router.put("/{project_id}/results/{result_id}")
+def update_result(project_id: int, result_id: int, payload: ProjectResultProofUpdate, db: Session = Depends(get_db)):
+    r = crud.update_project_result(db, project_id, result_id, payload)
+    if not r:
+        raise HTTPException(status_code=404, detail='Comprovação não encontrada')
+    return {"status": "updated"}
+
+@router.delete("/{project_id}/results/{result_id}")
+def delete_result(project_id: int, result_id: int, db: Session = Depends(get_db)):
+    ok = crud.delete_project_result(db, project_id, result_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail='Comprovação não encontrada')
+    return {"status": "deleted"}
+
+
+# --- CNMP Awards ---
+@router.get("/{project_id}/awards")
+def list_awards(project_id: int, db: Session = Depends(get_db)):
+    rows = crud.list_project_awards(db, project_id)
+    return [{"id":a.id, "project_id":a.project_id, "ano":a.ano, "categoria":a.categoria, "created_at":a.created_at} for a in rows]
+
+@router.post("/{project_id}/awards")
+def add_award(project_id: int, payload: ProjectCnmpAwardCreate, db: Session = Depends(get_db), request: Request = None, _: bool = Depends(require_roles('editor','admin'))):
+    if not payload.ano or not payload.categoria:
+        raise HTTPException(status_code=400, detail='Ano e categoria são obrigatórios')
+    existing = crud.get_project(db, project_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail='Projeto não encontrado')
+    user = get_current_user(request)
+    roles = [r.strip() for r in (request.headers.get('x-role','') or '').split(',') if r.strip()]
+    if 'admin' not in roles and existing.owner != user:
+        from ...db.models import ProjectMember
+        is_member = db.query(ProjectMember).filter(ProjectMember.project_id == project_id, ProjectMember.email == user).first()
+        if not is_member:
+            raise HTTPException(status_code=403, detail='Somente o proprietário ou membros podem incluir prêmio')
+    a = crud.add_project_award(db, project_id, payload)
+    return {"id": a.id}
+
+@router.put("/{project_id}/awards/{award_id}")
+def update_award(project_id: int, award_id: int, payload: ProjectCnmpAwardUpdate, db: Session = Depends(get_db)):
+    a = crud.update_project_award(db, project_id, award_id, payload)
+    if not a:
+        raise HTTPException(status_code=404, detail='Prêmio não encontrado')
+    return {"status": "updated"}
+
+@router.delete("/{project_id}/awards/{award_id}")
+def delete_award(project_id: int, award_id: int, db: Session = Depends(get_db)):
+    ok = crud.delete_project_award(db, project_id, award_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail='Prêmio não encontrado')
+    return {"status": "deleted"}
+
 @router.put("/{project_id}", response_model=ProjectOut)
 async def update_project(project_id: int, payload: ProjectUpdate, db: Session = Depends(get_db), request: Request = None, _: bool = Depends(require_roles('editor','admin'))):
     # owner check
@@ -272,8 +576,19 @@ async def update_project(project_id: int, payload: ProjectUpdate, db: Session = 
     return out
 
 @router.delete("/{project_id}")
-async def delete_project(project_id: int, db: Session = Depends(get_db), request: Request = None, _: bool = Depends(require_roles('admin'))):
-    # owner check (admin já exigido, mas mantemos para logs)
+async def delete_project(project_id: int, db: Session = Depends(get_db), request: Request = None, _: bool = Depends(require_roles('admin','editor'))):
+    # autoriza owner ou membro (admin também permitido)
+    existing = crud.get_project(db, project_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail='Projeto não encontrado')
+    roles = request.headers.get('x-role','') if request else ''
+    roles = [r.strip() for r in roles.split(',') if r.strip()]
+    user = get_current_user(request)
+    if 'admin' not in roles and existing.owner != user:
+        from ...db.models import ProjectMember
+        is_member = db.query(ProjectMember).filter(ProjectMember.project_id == project_id, ProjectMember.email == user).first()
+        if not is_member:
+            raise HTTPException(status_code=403, detail='Somente o proprietário ou membros da equipe podem excluir')
     ok = crud.delete_project(db, project_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
@@ -288,6 +603,8 @@ def list_projects(
     tipo_iniciativa: Optional[str] = None,
     classificacao: Optional[str] = None,
     fase: Optional[str] = None,
+    unidade_gestora: Optional[str] = None,
+    selo: Optional[str] = None,
     orderBy: Optional[str] = Query(None, alias="orderBy"),
     order: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -300,6 +617,8 @@ def list_projects(
         tipo_iniciativa=tipo_iniciativa,
         classificacao=classificacao,
         fase=fase,
+        unidade_gestora=unidade_gestora,
+        selo=selo,
         order_by=orderBy,
         order=order
     )
@@ -312,3 +631,16 @@ def list_projects(
         }
         projects.append(out)
     return {"projects": projects, "total": total}
+
+
+# --- Likes ---
+@router.get("/{project_id}/likes")
+def get_likes(project_id: int, db: Session = Depends(get_db)):
+    total = crud.count_project_likes(db, project_id)
+    return {"project_id": project_id, "likes": total}
+
+@router.post("/{project_id}/likes")
+def like(project_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request)
+    ok = crud.add_project_like(db, project_id, user or 'anon@local')
+    return {"status": "ok", "liked": ok}

@@ -54,7 +54,7 @@ function App() {
   const currentUser = isTestMode ? testUser : user;
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ width: '100%', flex: '1 1 auto' }}>
       <Layout user={currentUser}>
         <Routes>
           {/* Dashboard Principal */}

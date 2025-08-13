@@ -5,6 +5,10 @@ services:
     environment:
       - ENVIRONMENT=prod
       - ENV_FILE=.env.prod
+      - USE_AUTH=true
+      - INCLUDE_INSTITUTIONAL_ROUTES=false
+      - AUTO_MIGRATE=false
+    command: uv run gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:8000 --timeout 120
   mcp-ingestion:
     env_file:
       - ./.env.shared
@@ -16,3 +20,4 @@ services:
       - VITE_TEST_MODE=false
       - VITE_API_BASE_URL=https://api.portal.mp.gov.br
       - VITE_INGESTION_BASE_URL=https://ingestion.portal.mp.gov.br
+    command: sh -c "npm ci && npm run build && npx serve -s dist -l 5173"

@@ -56,7 +56,7 @@ const Login = () => {
             >
               Plataforma Inteligente de
               <Box component="span" sx={{ color: '#60a5fa' }}> Gestão</Box> e
-              <Box component="span" sx={{ color: '#34d399' }}> Análise</Box> de Projetos
+              <Box component="span" sx={{ color: '#34d399' }}> Análise</Box> de Iniciativas
             </Typography>
 
             <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.8)', mb: 4 }}>
@@ -84,8 +84,8 @@ const Login = () => {
               boxShadow: '0 20px 60px rgba(0,0,0,0.4)'
             }}>
               <Box sx={{ textAlign: 'center', pt: 4, px: 4 }}>
-                <Avatar src="/logo.png" alt="MPSP Projetos" sx={{ width: 72, height: 72, mx: 'auto', mb: 2, bgcolor: 'transparent' }} />
-                <Typography variant="h5" sx={{ color: 'white', fontWeight: 800 }}>MPSP Projetos</Typography>
+                <Avatar src="/logo.png" alt="Plataforma Inteligente de Gestão de Iniciativas no MPSP" sx={{ width: 72, height: 72, mx: 'auto', mb: 2, bgcolor: 'transparent' }} />
+                <Typography variant="h5" sx={{ color: 'white', fontWeight: 800, textAlign: 'center' }}>Plataforma Inteligente de Gestão de Iniciativas no MPSP</Typography>
                 <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', mt: 1 }}>Use suas credenciais institucionais</Typography>
               </Box>
 

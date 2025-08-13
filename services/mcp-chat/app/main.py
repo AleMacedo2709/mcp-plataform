@@ -1,5 +1,6 @@
 from pathlib import Path
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import sys
 import logging
@@ -28,6 +29,17 @@ from packages.institutional.ia.provider import generate_json
 from .mcp_server import mcp  # MCP SDK server
 
 app = FastAPI(title="MCP Chat (DEV)", version="0.2.0")
+
+# CORS restrito em PROD
+_cors = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+_origins = [o.strip() for o in _cors.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_origins,
+    allow_credentials=True,
+    allow_methods=["GET","POST","OPTIONS"],
+    allow_headers=["Authorization","Content-Type","X-Requested-With"]
+)
 
 class AskPayload(BaseModel):
     question: str
@@ -81,6 +93,13 @@ from fastapi import WebSocket, WebSocketDisconnect
 @app.websocket("/ws")
 async def ws_chat(ws: WebSocket):
     await ws.accept()
+    # Requer token se USE_AUTH=true
+    _require = os.getenv("USE_AUTH", "false").lower() == "true"
+    if _require:
+        token = (ws.headers.get('authorization') or '').split('Bearer ',1)[-1].strip() if ws.headers.get('authorization') else ws.query_params.get('token')
+        if not token:
+            await ws.close(code=4401)
+            return
     try:
         await ws.send_json({"type":"welcome","message":"MCP Chat WebSocket pronto."})
         while True:
@@ -147,9 +166,23 @@ Responda em português, de forma objetiva e clara, com 3 partes:
 
 configure_json_logging('mcp-chat')
 app.add_middleware(MetricsMiddleware, service='mcp-chat')
-from fastapi import APIRouter
+from fastapi import APIRouter, Request, Depends
+import os as _os2
+_protect_m = (_os2.getenv("ENVIRONMENT","local").lower()=="production") or (_os2.getenv("PROTECT_METRICS","true").lower()=="true")
+def _req_admin(req: Request=None):
+    if not _protect_m:
+        return True
+    try:
+        roles = (req.headers.get('x-role','') if req else '').lower()
+        if 'admin' in roles:
+            return True
+    except Exception:
+        pass
+    from fastapi import HTTPException
+    raise HTTPException(status_code=403, detail='forbidden')
+
 metrics_router = APIRouter()
-metrics_router.add_api_route('/metrics', metrics_endpoint(), methods=['GET'])
+metrics_router.add_api_route('/metrics', metrics_endpoint(), methods=['GET'], dependencies=[Depends(_req_admin)] if _protect_m else None)
 app.include_router(metrics_router)
 
 

@@ -24,6 +24,7 @@ nav:
   - Guia: frontend/guia.md
 - Operação:
   - Deploy: operacao/deploy.md
+  - Entrega para TI: operacao/entrega-ti.md
 - Troubleshooting:
   - FAQ: troubleshooting/faq.md
 markdown_extensions:

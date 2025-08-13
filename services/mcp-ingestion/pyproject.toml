@@ -16,7 +16,8 @@ dependencies = [
     "python-docx>=0.8.11",
     "opentelemetry-sdk>=1.26.0",
     "opentelemetry-instrumentation-fastapi>=0.46b0",
-    "opentelemetry-exporter-otlp>=1.26.0"
+    "opentelemetry-exporter-otlp>=1.26.0",
+    "slowapi>=0.1.9"
 ]
 
 [tool.uv]
